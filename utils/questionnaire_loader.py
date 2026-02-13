@@ -38,11 +38,11 @@ class QuestionnaireLoader:
         'Баланс и мобильность': 'баланс'
     }
 
-    EXPERIENCE_MAP = {
-        'Новичок (не тренировался или очень редко)': 'новичок',
-        'Начинающий (занимаюсь нерегулярно, базу знаю слабо)': 'новичок',
-        'Уверенный любитель (тренируюсь регулярно сейчас, знаю базу)': 'любитель',
-        'Продвинутый (регулярные тренировки более 2 лет)': 'профи'
+    # Маппинг по ключевым словам — устойчив к изменениям текста в Google Forms
+    EXPERIENCE_KEYWORDS = {
+        'профи': ['профи', 'опытный', 'продвинутый', 'advanced', 'pro', 'системно'],
+        'любитель': ['любитель', 'регулярно', 'средний', 'intermediate', 'уверенный'],
+        'новичок': ['новичок', 'начинающий', 'beginner', 'нерегулярно', 'редко'],
     }
 
     BREAK_MAP = {
@@ -99,8 +99,12 @@ class QuestionnaireLoader:
         # LLM сам разберётся что написал человек
         health_raw = row.get('Есть ли у вас ограничения по здоровью?', '').strip()
 
-        # Если написано "нет" или пусто - оставляем пустым
-        if health_raw.lower() in ['нет', 'no', '']:
+        # Если написано "нет", пусто, или вариации "всё ок" - оставляем пустым
+        health_lower = health_raw.lower()
+        no_restriction_phrases = ['нет', 'no', '', 'нету', 'не имею',
+                                  'под контролем', 'под собственным контролем',
+                                  'все в порядке', 'всё в порядке', 'без ограничений']
+        if any(phrase in health_lower for phrase in no_restriction_phrases):
             health_restrictions = ''
         else:
             health_restrictions = health_raw  # Raw text напрямую
@@ -117,10 +121,8 @@ class QuestionnaireLoader:
             QuestionnaireLoader.GOAL_MAP,
             'здоровье'
         )
-        experience = QuestionnaireLoader._get_mapped_value(
-            row.get('Ваш реальный стаж тренировок ', ''),
-            QuestionnaireLoader.EXPERIENCE_MAP,
-            'новичок'
+        experience = QuestionnaireLoader._match_experience(
+            row.get('Ваш реальный стаж тренировок ', '')
         )
         current_break = QuestionnaireLoader._get_mapped_value(
             row.get('Текущий перерыв в тренировках', ''),
@@ -145,6 +147,21 @@ class QuestionnaireLoader:
         }
 
         return questionnaire
+
+    @staticmethod
+    def _match_experience(csv_value: str) -> str:
+        """Определить уровень опыта по ключевым словам (устойчиво к изменениям Google Forms)."""
+        text = csv_value.lower().strip()
+        if not text:
+            return 'новичок'
+
+        # Проверяем от высшего к низшему — если есть "профи", это профи даже если есть и другие слова
+        for level in ['профи', 'любитель', 'новичок']:
+            for keyword in QuestionnaireLoader.EXPERIENCE_KEYWORDS[level]:
+                if keyword in text:
+                    return level
+
+        return 'новичок'
 
     @staticmethod
     def _get_mapped_value(csv_value: str, mapping: Dict, default):

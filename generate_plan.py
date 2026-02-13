@@ -12,6 +12,7 @@ from generators.plan_generator import RecommendedPlanGenerator
 from utils.data_loader import UserDataLoader
 from utils.questionnaire_loader import load_questionnaire_for_user
 from db import MongoConnection, PostgresConnection
+import csv
 import json
 import logging
 import sys
@@ -21,6 +22,163 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(levelname)s:%(name)s:%(message)s'
 )
+
+
+DAY_NAMES = {1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс'}
+
+
+def print_plan_summary(result: dict):
+    """
+    Читаемая сводка сгенерированного плана:
+    - Метаданные (цель, частота, график, клуб)
+    - Неделя за неделей: список тренировок
+    - Распределение типов в процентах
+    - Задачи (tasksProgress)
+    """
+    meta = result.get('metadata', {})
+    plan = result.get('recommendedPlan', [])
+    tasks = result.get('tasksProgress', [])
+
+    # --- Метаданные ---
+    print("\n" + "=" * 60)
+    print("СВОДКА ПЛАНА")
+    print("=" * 60)
+    print(f"  Цель:           {meta.get('goal', '?')}")
+    print(f"  Уровень:        {meta.get('progression_level', '?')}")
+    print(f"  Базовая частота: {meta.get('frequency', '?')} тренировок/неделю")
+    schedule = meta.get('weekly_schedule', [])
+    if schedule:
+        schedule_str = '  '.join([f"W{i+1}:{s}" for i, s in enumerate(schedule)])
+        print(f"  График:         {schedule_str}")
+        print(f"  Всего:          {sum(schedule)} тренировок за 8 недель")
+    if meta.get('club_name'):
+        print(f"  Клуб:           {meta['club_name']}")
+    if meta.get('focus_areas'):
+        print(f"  Фокус:          {', '.join(meta['focus_areas'])}")
+
+    # --- Таблица расписания ---
+    print("\n" + "-" * 80)
+    print("РАСПИСАНИЕ")
+    print("-" * 80)
+
+    type_counts = {}
+    total_workouts = 0
+
+    # Собираем данные: week_data[week][day] = primary_type
+    week_data = {}
+    for item in plan:
+        w = item.get('week', 0)
+        d = item.get('day', 0)
+        types = item.get('programSetTypes', [])
+        primary = types[0] if types else '?'
+        week_data.setdefault(w, {})[d] = primary
+        total_workouts += 1
+        type_counts[primary] = type_counts.get(primary, 0) + 1
+
+    # Ширина колонок
+    col_w = 12
+    header = "          " + "".join(f"{DAY_NAMES.get(d, '?'):^{col_w}}" for d in range(1, 8))
+
+    for part in [1, 2]:
+        part_weeks = range(1, 5) if part == 1 else range(5, 9)
+        print(f"\n  Part {part}")
+        print(f"  {header}")
+        print(f"  {'':>10}" + "-" * (col_w * 7))
+
+        for week in part_weeks:
+            row = f"  W{week:<8}"
+            for day in range(1, 8):
+                cell = week_data.get(week, {}).get(day, '')
+                row += f"{cell:^{col_w}}"
+            exp = schedule[week - 1] if schedule and len(schedule) >= week else '?'
+            row += f"  | {exp} тр."
+            print(row)
+
+        print(f"  {'':>10}" + "-" * (col_w * 7))
+
+    # --- Распределение типов ---
+    print("\n" + "-" * 60)
+    print("РАСПРЕДЕЛЕНИЕ ТИПОВ")
+    print("-" * 60)
+
+    sorted_types = sorted(type_counts.items(), key=lambda x: -x[1])
+    for t, count in sorted_types:
+        pct = (count / total_workouts * 100) if total_workouts else 0
+        bar = '#' * int(pct / 2)
+        print(f"  {t:<22} {count:>2} ({pct:4.1f}%)  {bar}")
+
+    print(f"\n  Итого: {total_workouts} тренировок")
+
+    # --- Задачи ---
+    if tasks:
+        print("\n" + "-" * 60)
+        print("ЗАДАЧИ (tasksProgress)")
+        print("-" * 60)
+        for i, task in enumerate(tasks, 1):
+            types_str = ', '.join(task.get('programSetTypes', []))
+            print(f"  {i}. [{task.get('part', '?')}] {task.get('text', '?')} (target: {task.get('target', '?')}) [{types_str}]")
+
+    print()
+
+
+def save_plan_csv(result: dict, csv_path: str):
+    """
+    Сохранить план в CSV для вставки в Google Sheets.
+    Содержит метаданные, таблицу расписания (Part 1 + Part 2) и распределение типов.
+    """
+    meta = result.get('metadata', {})
+    plan = result.get('recommendedPlan', [])
+    schedule = meta.get('weekly_schedule', [])
+
+    # Собираем week_data[week][day] = primary_type
+    week_data = {}
+    type_counts = {}
+    total_workouts = 0
+    for item in plan:
+        w = item.get('week', 0)
+        d = item.get('day', 0)
+        types = item.get('programSetTypes', [])
+        primary = types[0] if types else '?'
+        week_data.setdefault(w, {})[d] = primary
+        total_workouts += 1
+        type_counts[primary] = type_counts.get(primary, 0) + 1
+
+    days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+    with open(csv_path, 'w', encoding='utf-8-sig', newline='') as f:
+        writer = csv.writer(f)
+
+        # Метаданные
+        writer.writerow(['Цель', meta.get('goal', '')])
+        writer.writerow(['Уровень', meta.get('progression_level', '')])
+        writer.writerow(['Частота', f"{meta.get('frequency', '')} тр/нед"])
+        writer.writerow(['Клуб', meta.get('club_name', '')])
+        if meta.get('focus_areas'):
+            writer.writerow(['Фокус', ', '.join(meta['focus_areas'])])
+        if schedule:
+            writer.writerow(['График', ' | '.join(f"W{i+1}:{s}" for i, s in enumerate(schedule))])
+            writer.writerow(['Всего', f"{sum(schedule)} тренировок"])
+        writer.writerow([])
+
+        # Part 1 и Part 2
+        for part in [1, 2]:
+            part_weeks = range(1, 5) if part == 1 else range(5, 9)
+            writer.writerow([f'Part {part}', *days, 'Тренировок'])
+            for week in part_weeks:
+                row = [f'W{week}']
+                for day in range(1, 8):
+                    row.append(week_data.get(week, {}).get(day, ''))
+                exp = schedule[week - 1] if schedule and len(schedule) >= week else ''
+                row.append(exp)
+                writer.writerow(row)
+            writer.writerow([])
+
+        # Распределение типов
+        writer.writerow(['Тип', 'Кол-во', '%'])
+        for t, count in sorted(type_counts.items(), key=lambda x: -x[1]):
+            pct = (count / total_workouts * 100) if total_workouts else 0
+            writer.writerow([t, count, f'{pct:.1f}%'])
+        writer.writerow(['Итого', total_workouts, '100%'])
 
 
 def generate_plan(phone_or_name: str, user_id: str):
@@ -101,52 +259,7 @@ def generate_plan(phone_or_name: str, user_id: str):
 
         # 6. Вывод результатов
         print("\n[OK] План успешно сгенерирован!")
-        print("\n" + "=" * 80)
-        print("РЕЗУЛЬТАТЫ ГЕНЕРАЦИИ")
-        print("=" * 80)
-
-        # Метаданные
-        metadata = result['metadata']
-        print(f"\nМЕТАДАННЫЕ:")
-        print(f"  Частота: {metadata['frequency']} тренировок/неделю")
-        print(f"  Историческая частота: {metadata.get('historical_frequency', 'N/A'):.1f} раз/неделю")
-        print(f"  Уровень прогрессии: {metadata['progression_level']}")
-        print(f"  Цель: {metadata['goal']}")
-        print(f"  Фокус: {', '.join(metadata['focus_areas'])}")
-        print(f"  Клуб: {metadata.get('club_name', 'Не указан')}")
-
-        # Статистика плана
-        print(f"\nСТАТИСТИКА ПЛАНА:")
-        print(f"  Всего тренировок: {metadata['total_workouts']}")
-        print(f"  Всего задач: {metadata['total_tasks']}")
-        print(f"  Недель: 8 (Part 1: недели 1-4, Part 2: недели 5-8)")
-
-        # Распределение по типам программ
-        stats = generator.get_generation_stats(result)
-        print(f"\nРАСПРЕДЕЛЕНИЕ ПО ТИПАМ ПРОГРАММ:")
-        for ptype, count in sorted(stats['type_distribution'].items(), key=lambda x: -x[1]):
-            percentage = (count / stats['total_workouts']) * 100
-            print(f"  {ptype}: {count} тренировок ({percentage:.1f}%)")
-
-        # Примеры тренировок
-        print(f"\nПРИМЕР ТРЕНИРОВОК (первая неделя):")
-        week1 = [w for w in result['recommendedPlan'] if w['week'] == 1]
-        for i, workout in enumerate(week1, 1):
-            day_names = {1: 'ПН', 2: 'ВТ', 3: 'СР', 4: 'ЧТ', 5: 'ПТ', 6: 'СБ', 7: 'ВС'}
-            day_name = day_names.get(workout['day'], workout['day'])
-            print(f"\n  {i}. Неделя {workout['week']}, {day_name} (день {workout['day']})")
-            print(f"     {workout['text']}")
-            print(f"     Основной: {workout['programSetTypes'][0]}")
-            if len(workout['programSetTypes']) > 1:
-                print(f"     Альтернативы: {', '.join(workout['programSetTypes'][1:])}")
-
-        # Примеры задач
-        print(f"\nПРИМЕР ЗАДАЧ (Part 1):")
-        part1_tasks = [t for t in result['tasksProgress'] if t['part'] == 1][:5]
-        for i, task in enumerate(part1_tasks, 1):
-            print(f"\n  {i}. {task['text']}")
-            print(f"     Цель: {task['target']}, выполнено: {task['done']}")
-            print(f"     Программы: {', '.join(task['programSetTypes'])}")
+        print_plan_summary(result)
 
         # 7. Сохранение в файл
         print("\n[6/6] Сохранение результатов...")
@@ -158,6 +271,10 @@ def generate_plan(phone_or_name: str, user_id: str):
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
         print(f"  [OK] Полный план сохранён в: {output_file}")
+
+        csv_file = output_file.replace('.json', '_schedule.csv')
+        save_plan_csv(result, csv_file)
+        print(f"  [OK] CSV для Google Sheets: {csv_file}")
 
         print("\n" + "=" * 80)
         print("[OK] УСПЕШНО! План готов к использованию")

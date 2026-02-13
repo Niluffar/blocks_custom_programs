@@ -18,7 +18,7 @@ from typing import List, Dict
 # Группы конфликтов:
 #   1. Силовые сплиты (push/pull/upperBody/armBlast) - нельзя подряд, те же мышцы
 #   2. Ноги (legs/gluteLab) - нельзя подряд, те же мышцы
-#   3. Всё тело (fullBody/functionalFullBody) - нельзя подряд, всё тело
+#   3. Всё тело (fullBody/functionalFullBody) - нельзя подряд, всё тело + нельзя подряд с upperBody
 #   4. Кардио (bootcamp/metcon) - только сами с собой, можно чередовать
 #   5. Reshape - только сам с собой (пилатес на реформерах)
 #
@@ -36,13 +36,13 @@ RECOVERY_RULES: Dict[str, Dict] = {
         'description': 'Тяговые движения - спина, бицепс'
     },
     'legs': {
-        'conflicts': ['legs', 'gluteLab'],  # убран fullBody (умеренная нагрузка на ноги, не блокирует)
+        'conflicts': ['legs', 'gluteLab', 'bootcamp'],  # bootcamp нагружает ноги после legs = перегрузка
         'recovery_days': 1,
         'muscle_groups': ['quads', 'hamstrings', 'glutes'],
         'description': 'Ноги - квадрицепсы, задняя поверхность бедра, ягодицы'
     },
     'upperBody': {
-        'conflicts': ['push', 'pull', 'upperBody', 'armBlast'],
+        'conflicts': ['push', 'pull', 'upperBody', 'armBlast', 'fullBody', 'functionalFullBody'],
         'recovery_days': 1,
         'muscle_groups': ['chest', 'back', 'shoulders', 'arms'],
         'description': 'Весь верх тела - комплексная нагрузка'
@@ -60,13 +60,13 @@ RECOVERY_RULES: Dict[str, Dict] = {
         'description': 'Metabolic conditioning - кардио выносливость'
     },
     'fullBody': {
-        'conflicts': ['fullBody', 'functionalFullBody'],
+        'conflicts': ['fullBody', 'functionalFullBody', 'upperBody'],
         'recovery_days': 1,
         'muscle_groups': ['full_body'],
         'description': 'Все тело - комплексная силовая тренировка'
     },
     'functionalFullBody': {
-        'conflicts': ['functionalFullBody', 'fullBody'],
+        'conflicts': ['functionalFullBody', 'fullBody', 'upperBody'],
         'recovery_days': 1,
         'muscle_groups': ['full_body', 'core'],
         'description': 'Функциональная тренировка всего тела'
@@ -113,19 +113,6 @@ RECOVERY_RULES: Dict[str, Dict] = {
         'muscle_groups': ['full_body'],
         'description': 'Продвинутая функциональная тренировка'
     },
-    # 'swim': {
-    #     'conflicts': ['swim'],
-    #     'recovery_days': 1,
-    #     'muscle_groups': ['full_body', 'cardiovascular'],
-    #     'description': 'Плавание'
-    # },
-    # 'boxing': {
-    #     'conflicts': ['boxing', 'upperBody', 'push'],
-    #     'recovery_days': 2,
-    #     'muscle_groups': ['upper_body', 'cardiovascular'],
-    #     'description': 'Бокс'
-    # },
-    # Закомментировано: эти форматы пока не используются в клубах Hero Fitness
 }
 
 

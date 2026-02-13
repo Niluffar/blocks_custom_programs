@@ -24,7 +24,8 @@ class PromptBuilder:
         available_types: List[str],
         recovery_rules: Dict[str, Dict],
         pattern_examples: List[Dict[str, Any]],
-        reshape_per_block: int = 0
+        reshape_per_block: int = 0,
+        weekly_schedule: List[int] = None
     ) -> str:
         """
         Построить полный промпт для Gemini API.
@@ -39,6 +40,11 @@ class PromptBuilder:
         Returns:
             str: Полный промпт для LLM
         """
+        # Понедельный график частот
+        schedule = weekly_schedule or user_profile.weekly_schedule
+        total_workouts = sum(schedule)
+        schedule_str = ', '.join([f"W{i+1}:{s}" for i, s in enumerate(schedule)])
+
         # Базовая структура промпта
         prompt = f"""Ты фитнес-эксперт Hero Fitness. Создай ИНДИВИДУАЛЬНЫЙ план тренировок на 8 недель.
 
@@ -46,10 +52,17 @@ class PromptBuilder:
 - Цель: {self._format_goal(user_profile.goal)}
 - Фокусные области: {', '.join(user_profile.focus_areas)}
 - Опыт: {user_profile.experience_level} (Уровень прогрессии: {user_profile.progression_level})
-- Частота: {user_profile.frequency} тренировок в неделю
+- Базовая частота: {user_profile.frequency} тренировок в неделю
 - Пол: {user_profile.gender}, Возраст: {user_profile.age} лет
 - Текущая форма: {user_profile.body_type}
 - Ограничения по здоровью: {user_profile.health_restrictions if user_profile.health_restrictions else 'нет'}
+
+ВОЛНООБРАЗНАЯ ПЕРИОДИЗАЦИЯ (ОБЯЗАТЕЛЬНО):
+Частота тренировок МЕНЯЕТСЯ от недели к неделе для оптимального восстановления и прогресса.
+График: {schedule_str}
+Общее количество тренировок за 8 недель: {total_workouts}
+- Недели с пониженной частотой (deload) — это разгрузочные недели для восстановления
+- СТРОГО соблюдай указанное количество тренировок для КАЖДОЙ недели
 
 ДОСТУПНЫЕ ПРОГРАММЫ В КЛУБЕ:
 {', '.join(available_types)}
@@ -75,22 +88,34 @@ class PromptBuilder:
 1. Используй МИНИМУМ 5-6 разных типов программ за 8 недель
    → Не ограничивайся только самыми популярными типами
    → Разнообразие = больше мотивации и лучшие результаты
+   → ЗАПРЕЩЕНО: один тип программ более 25% от общего числа тренировок
+   → Если два типа по сути похожи (bootcamp и metcon — оба кардио), их СУММА не должна превышать 45%
 
-2. Избегай полностью одинаковых недель
-   → Максимум 2 недели подряд с одинаковым паттерном
-   → Каждые 2-3 недели вноси изменения в структуру
+2. ОБЯЗАТЕЛЬНЫЙ БАЛАНС силовых и кардио (для ЛЮБОЙ цели):
+   → Минимум 20% тренировок = силовые (push, pull, legs, upperBody, armBlast, gluteLab, fullBody, functionalFullBody)
+   → Минимум 15% тренировок = кардио/метаболические (bootcamp, metcon)
+   → Даже при цели "похудение" НЕЛЬЗЯ делать 100% кардио — силовые сохраняют мышцы
+   → Даже при цели "масса" НЕЛЬЗЯ делать 100% силовые — кардио поддерживает здоровье сердца
 
-3. Прогрессия через разнообразие в Part 2 (недели 5-8):
+3. Избегай полностью одинаковых недель
+   → ЗАПРЕЩЕНО: две полностью идентичные недели (одинаковые типы в одинаковом порядке)
+   → Каждые 2 недели вноси заметные изменения в структуру
+   → Меняй порядок тренировок, вводи новые типы, чередуй акценты
+
+4. Прогрессия через разнообразие в Part 2 (недели 5-8):
    → Введи 1-2 НОВЫХ типа программ которых не было в Part 1
    → Увеличь сложность через вариативность, не только через частоту
+   → Part 2 должен ЗАМЕТНО отличаться от Part 1 по составу программ
 
-4. Учитывай фокусные области через РАЗНЫЕ программы:
+5. Учитывай фокусные области ОБЯЗАТЕЛЬНО:
+   → Фокусная область атлета — это то, что ему ВАЖНО. НЕ игнорируй её.
+   → Минимум 2-3 тренировки за 8 недель должны напрямую относиться к фокусной области
 {self._format_focus_variety_instructions(user_profile.focus_areas, available_types)}
 
 ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА:
 
 1. Соблюдай восстановление мышц между тренировками:
-{self._format_recovery_rules(recovery_rules)}
+{self._format_recovery_rules(recovery_rules, user_profile.frequency)}
 
 2. Используй ТОЛЬКО доступные типы программ из списка выше.
    ИСКЛЮЧЕНИЯ: НЕ используй education, assessment и endGame - это специальные программы (онбординг и финальные испытания), не для регулярных тренировочных планов.
@@ -99,16 +124,40 @@ class PromptBuilder:
    - Недели 1-4 (part=1): базовый уровень интенсивности
    - Недели 5-8 (part=2): повышенная интенсивность
 
-4. Распределение тренировок по дням недели:
-   - 3 тренировки: Понедельник (день 1), Среда (день 3), Пятница (день 5)
-   - 4 тренировки: Понедельник (день 1), Вторник (день 2), Четверг (день 4), Пятница (день 5)
-   - 5 тренировок: Понедельник (день 1), Вторник (день 2), Среда (день 3), Пятница (день 5), Суббота (день 6)
+4. Распределение тренировок по дням недели (зависит от частоты ЭТОЙ недели):
+   - Если на неделе 3 тренировки: дни 1, 3, 5 (Пн, Ср, Пт)
+   - Если на неделе 4 тренировки: дни 1, 2, 4, 5 (Пн, Вт, Чт, Пт)
+   - Если на неделе 5 тренировок: дни 1, 2, 3, 5, 6 (Пн, Вт, Ср, Пт, Сб)
+   ВАЖНО: Частота может быть РАЗНОЙ на разных неделях (см. ВОЛНООБРАЗНАЯ ПЕРИОДИЗАЦИЯ выше).
+   Используй соответствующие дни для каждой недели в зависимости от её частоты.
 
 5. Для каждого дня добавь 1-2 альтернативных типа программ в массив programSetTypes.
    - Первый элемент - основной тип программы
    - Следующие 1-2 элемента - альтернативы на случай занятости зала
 
-{self._format_reshape_limit(reshape_per_block)}
+6. КОМБО СИЛОВЫХ НА НЕДЕЛЕ:
+   - Если на неделе есть push, pull и upperBody — ставь upperBody ПОСЛЕДНИМ (в конце недели).
+     upperBody = тонизирующая тренировка после тяжёлых сплитов, логичный финал недели.
+   - Если на неделе только 2 силовые тренировки → предпочтение: upperBody/fullBody + legs/gluteLab
+     (комплексные, покрывают всё тело)
+   - Если на неделе 3 силовые тренировки → предпочтение: push + pull + legs/gluteLab
+     (классический сплит с полным покрытием мышечных групп)
+
+7. НЕ СТАВЬ одинаковый тип тренировки на КОНЕЦ одной недели и НАЧАЛО следующей.
+   Например: ...пт=bootcamp] [пн=bootcamp... — ЗАПРЕЩЕНО.
+   Между концом и началом недели тоже нужно разнообразие.
+
+8. После legs НЕЛЬЗЯ ставить bootcamp (ноги после legs перегружены, bootcamp даёт нагрузку на ноги).
+   После legs МОЖНО: metcon, push, pull, upperBody, mindAndBody, reshape.
+
+9. БАЛАНС push и pull:
+   - Количество push и pull тренировок за 8 недель должно быть ОДИНАКОВЫМ (±1).
+   - Исключение: если фокус атлета именно на спину (больше pull) или грудь (больше push).
+
+10. Reshape — если доступен в клубе, поставь МИНИМУМ 1 тренировку за 8 недель.
+    Reshape (пилатес на реформерах) полезен для глубоких мышц, осанки и восстановления.
+
+{self._format_reshape_limit()}
 {self._add_edge_case_instructions(user_profile)}
 
 ПРИМЕРЫ ПАТТЕРНОВ (для понимания логики, НЕ КОПИРУЙ 1:1):
@@ -168,20 +217,67 @@ class PromptBuilder:
         }
         return goal_descriptions.get(goal, goal)
 
-    def _format_recovery_rules(self, recovery_rules: Dict[str, Dict]) -> str:
+    def _format_recovery_rules(self, recovery_rules: Dict[str, Dict], frequency: int = 3) -> str:
         """Форматировать правила восстановления для промпта."""
-        rules_text = []
 
-        for program_type, rules in recovery_rules.items():
-            conflicts = ', '.join(rules.get('conflicts', []))
-            recovery_days = rules.get('recovery_days', 1)
+        header = (
+            "   ПРАВИЛО: Два конфликтующих типа тренировок НЕЛЬЗЯ ставить ПОДРЯД "
+            "(один сразу после другого в одной неделе).\n"
+            "   Между конфликтующими типами должна быть минимум ОДНА другая тренировка.\n"
+        )
 
-            rules_text.append(
-                f"   - {program_type.upper()}: нужно {recovery_days} дня восстановления. "
-                f"Не ставь {program_type} если в предыдущие {recovery_days} дня были: {conflicts}"
+        families = (
+            "\n   ГРУППЫ КОНФЛИКТОВ (типы внутри группы нельзя ставить подряд):\n"
+            "   a) Верх-силовые: push, pull, upperBody, armBlast\n"
+            "      - push нельзя сразу после: push, upperBody, armBlast\n"
+            "      - pull нельзя сразу после: pull, upperBody, armBlast\n"
+            "      - upperBody нельзя сразу после: push, pull, upperBody, armBlast, fullBody, functionalFullBody (КОНФЛИКТУЕТ СО ВСЕМИ силовыми верха И всем телом!)\n"
+            "      - armBlast нельзя сразу после: push, pull, upperBody, armBlast (КОНФЛИКТУЕТ СО ВСЕМИ силовыми верха!)\n"
+            "      - ВАЖНО: push и pull НЕ конфликтуют между собой! push->pull и pull->push — ЭТО ОК.\n"
+            "   b) Ноги: legs и gluteLab — нельзя подряд друг за другом\n"
+            "      - ВАЖНО: после legs НЕЛЬЗЯ ставить bootcamp (ноги перегружены). После legs можно: metcon, push, pull, upperBody.\n"
+            "      - bootcamp->legs — ОК (в обратном порядке можно).\n"
+            "   c) Всё тело: fullBody и functionalFullBody — нельзя подряд друг за другом И нельзя подряд с upperBody\n"
+            "   d) Кардио: bootcamp конфликтует ТОЛЬКО сам с собой, metcon ТОЛЬКО сам с собой\n"
+            "      -> bootcamp->metcon — ОК, metcon->bootcamp — ОК\n"
+            "   e) mindAndBody: НЕТ КОНФЛИКТОВ, можно ставить после чего угодно\n"
+            "   f) reshape: конфликтует ТОЛЬКО сам с собой\n"
+            "\n   КЛЮЧЕВОЙ ПРИЁМ: Используй legs, metcon, mindAndBody как \"разделители\"\n"
+            "   между push/pull и upperBody/armBlast.\n"
+            "   bootcamp можно как разделитель, НО не сразу после legs.\n"
+        )
+
+        examples = self._get_schedule_examples(max(frequency, 3))
+
+        return header + families + examples
+
+    def _get_schedule_examples(self, frequency: int) -> str:
+        """Конкретные примеры валидных/невалидных расписаний для заданной частоты."""
+
+        if frequency == 3:
+            return (
+                "\n   ПРИМЕРЫ РАСПИСАНИЙ (3 тренировки: дни 1, 3, 5):\n"
+                "   OK:  день1=push,     день3=legs,      день5=pull\n"
+                "   OK:  день1=bootcamp,  день3=legs,      день5=bootcamp\n"
+                "   BAD: день1=push,      день3=upperBody,  день5=pull  <- upperBody сразу после push!\n"
             )
-
-        return '\n'.join(rules_text)
+        elif frequency == 4:
+            return (
+                "\n   ПРИМЕРЫ РАСПИСАНИЙ (4 тренировки: дни 1, 2, 4, 5):\n"
+                "   OK:  день1=push,  день2=legs,       день4=pull,      день5=bootcamp\n"
+                "   OK:  день1=push,  день2=legs,       день4=pull,      день5=metcon\n"
+                "   BAD: день1=push,  день2=upperBody,  день4=legs,      день5=pull  <- upperBody сразу после push!\n"
+                "   FIX: день1=push,  день2=legs,       день4=upperBody, день5=bootcamp  <- legs разделяет push и upperBody\n"
+            )
+        else:  # frequency == 5
+            return (
+                "\n   ПРИМЕРЫ РАСПИСАНИЙ (5 тренировок: дни 1, 2, 3, 5, 6):\n"
+                "   OK:  день1=push,  день2=legs,      день3=pull,     день5=bootcamp, день6=upperBody\n"
+                "   OK:  день1=push,  день2=bootcamp,  день3=pull,     день5=legs,     день6=metcon\n"
+                "   OK:  день1=legs,  день2=push,      день3=bootcamp, день5=pull,     день6=upperBody\n"
+                "   BAD: день1=push,  день2=legs,      день3=pull,     день5=upperBody, день6=bootcamp  <- upperBody сразу после pull!\n"
+                "   FIX: день1=push,  день2=legs,      день3=pull,     день5=bootcamp,  день6=upperBody  <- поменяли день5 и день6 местами\n"
+            )
 
     def _format_recommended_distribution(self, goal: str, available_types: List[str]) -> str:
         """
@@ -259,21 +355,9 @@ class PromptBuilder:
 
         return '\n'.join(instructions) if instructions else "   → (Рекомендации не найдены)"
 
-    def _format_reshape_limit(self, reshape_per_block: int = 0) -> str:
-        """
-        Форматировать ограничение на Reshape тренировки.
-        reshape_per_block рассчитан из pilatesVisits (лимит на весь абонемент)
-        поделённый на количество блоков в абонементе.
-        0 = reshape недоступен (нет pilatesVisits в HeroPass).
-        """
-        if reshape_per_block <= 0:
-            return ''  # reshape уже убран из available_types, не нужно дублировать
-
-        return f"""
-ОГРАНИЧЕНИЕ ПО RESHAPE: У атлета лимит {reshape_per_block} тренировок Reshape (пилатес на реформерах) на этот блок.
-- Максимум {reshape_per_block} тренировок с основным типом "reshape" за 8 недель
-- Распредели их равномерно по неделям, не ставь все Reshape подряд
-- Не превышай этот лимит — это ограничение абонемента"""
+    def _format_reshape_limit(self) -> str:
+        """Reshape — без лимита, минимум 1 за блок указан в правилах выше."""
+        return ''
 
     def _add_edge_case_instructions(self, user_profile: UserProfile) -> str:
         """
@@ -331,20 +415,21 @@ class PromptBuilder:
         if user_profile.body_type == 'полное' and user_profile.goal == 'похудение':
             instructions.append("""
 ВАЖНО: Цель - снижение веса при полной форме:
-- Приоритет: Bootcamp и Metcon (высокий расход калорий)
-- Дополнительно: Functional Full Body для поддержки мышц
-- Меньше акцента на чистые силовые (Push/Pull)
-- Постепенное увеличение частоты кардио
+- Приоритет: Bootcamp и Metcon (высокий расход калорий), НО не более 45% от всех тренировок
+- ОБЯЗАТЕЛЬНО: силовые (Legs, Full Body, Functional Full Body) для сохранения мышц — минимум 25%
+- Постепенное увеличение интенсивности, не частоты кардио
+- Баланс: ~40% кардио + ~35% силовые + ~25% функциональные/восстановление
 """)
 
         # Спортивная форма + масса
         if user_profile.body_type == 'спортивное' and user_profile.goal == 'масса':
             instructions.append("""
 ВАЖНО: Набор массы при спортивной форме:
-- Приоритет: Push, Pull, Legs (силовой сплит)
-- Минимум кардио (1 раз в неделю Bootcamp или Metcon для здоровья сердца)
-- Фокус на прогрессии весов и объёма
+- Приоритет: Push, Pull, Legs (силовой сплит) — основа плана
+- ОБЯЗАТЕЛЬНО: 1 тренировка Bootcamp или Metcon каждые 2 недели для здоровья сердца
+- Добавь GluteLab, ArmBlast для разнообразия и изоляции отстающих мышц
 - Upper и Full Body для дополнительного объёма
+- НЕ делай более 3 силовых подряд без кардио/функциональной разгрузки
 """)
 
         if instructions:
@@ -398,18 +483,56 @@ class PromptBuilder:
         """
         errors_text = '\n'.join([f"- {error}" for error in validation_errors])
 
+        fix_suggestions = self._generate_fix_suggestions(validation_errors)
+
         retry_prompt = f"""{original_prompt}
 
-ОШИБКИ В ПРЕДЫДУЩЕЙ ПОПЫТКЕ:
+ОШИБКИ В ПРЕДЫДУЩЕЙ ПОПЫТКЕ (ИСПРАВЬ ВСЕ):
 {errors_text}
 
-ИСПРАВЬ ЭТИ ОШИБКИ:
-1. Проверь что все программы доступны в клубе
-2. Убедись что соблюдены правила восстановления
-3. Проверь частоту тренировок для каждой недели
-4. Проверь корректность распределения по частям (part 1 и part 2)
-5. Убедись что формат JSON правильный
+{fix_suggestions}
 
-Верни исправленный JSON массив:
+НАПОМИНАНИЕ О ПРАВИЛЕ ВОССТАНОВЛЕНИЯ:
+Два конфликтующих типа НЕЛЬЗЯ ставить ПОДРЯД в одной неделе.
+Проверь КАЖДУЮ неделю: для каждой тренировки посмотри на ПРЕДЫДУЩУЮ тренировку в той же неделе.
+Если предыдущая тренировка в списке конфликтов текущей — ПОМЕНЯЙ ПОРЯДОК или ЗАМЕНИ тип.
+
+СПОСОБЫ ИСПРАВЛЕНИЯ нарушений восстановления:
+1. ПОМЕНЯЙ МЕСТАМИ две соседние тренировки в неделе
+2. ВСТАВЬ "разделитель" (legs, bootcamp, metcon, mindAndBody) между конфликтующими типами
+3. ЗАМЕНИ один из конфликтующих типов на неконфликтующий
+
+Верни ПОЛНЫЙ исправленный JSON массив:
 """
         return retry_prompt
+
+    def _generate_fix_suggestions(self, validation_errors: List[str]) -> str:
+        """Парсит ошибки валидации и генерирует конкретные подсказки для исправления."""
+        import re
+
+        suggestions = []
+
+        for error in validation_errors:
+            if 'нарушение восстановления' in error:
+                match = re.match(
+                    r"Неделя (\d+), день (\d+): нарушение восстановления для '(\w+)'\. "
+                    r"Слишком рано после предыдущих тренировок: (.+)",
+                    error
+                )
+                if match:
+                    week = match.group(1)
+                    day = match.group(2)
+                    problem_type = match.group(3)
+                    prev_types_str = match.group(4)
+                    last_prev = prev_types_str.split(', ')[-1].strip()
+
+                    suggestions.append(
+                        f"-> Неделя {week}, день {day}: '{problem_type}' стоит сразу после '{last_prev}', "
+                        f"а они конфликтуют. РЕШЕНИЕ: поменяй день {day} с предыдущим днём местами, "
+                        f"или замени '{problem_type}' на тип без конфликта с '{last_prev}' "
+                        f"(например: legs, bootcamp, metcon, mindAndBody)."
+                    )
+
+        if suggestions:
+            return "КОНКРЕТНЫЕ ПОДСКАЗКИ ДЛЯ ИСПРАВЛЕНИЯ:\n" + '\n'.join(suggestions)
+        return ""

@@ -1,0 +1,31 @@
+﻿Цель,похудение
+Уровень,beginner
+Частота,3 тр/нед
+Клуб,HJ 4YOU
+Фокус,баланс
+График,W1:3 | W2:3 | W3:3 | W4:3 | W5:3 | W6:3 | W7:3 | W8:3
+Всего,24 тренировок
+
+Part 1,Пн,Вт,Ср,Чт,Пт,Сб,Вс,Тренировок
+W1,bootcamp,,legs,,upperBody,,,3
+W2,metcon,,upperBody,,bootcamp,,,3
+W3,legs,,upperBody,,metcon,,,3
+W4,bootcamp,,reshape,,metcon,,,3
+
+Part 2,Пн,Вт,Ср,Чт,Пт,Сб,Вс,Тренировок
+W5,push,,legs,,pull,,,3
+W6,bootcamp,,gluteLab,,push,,,3
+W7,pull,,metcon,,gluteLab,,,3
+W8,bootcamp,,armBlast,,metcon,,,3
+
+Тип,Кол-во,%
+bootcamp,5,20.8%
+metcon,5,20.8%
+legs,3,12.5%
+upperBody,3,12.5%
+push,2,8.3%
+pull,2,8.3%
+gluteLab,2,8.3%
+reshape,1,4.2%
+armBlast,1,4.2%
+Итого,24,100%

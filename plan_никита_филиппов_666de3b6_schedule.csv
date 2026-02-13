@@ -1,0 +1,29 @@
+﻿Цель,здоровье
+Уровень,intermediate
+Частота,4 тр/нед
+Клуб,HJ Colibri
+Фокус,"ноги, баланс, верх_тела, выносливость"
+График,W1:4 | W2:4 | W3:5 | W4:3 | W5:4 | W6:5 | W7:5 | W8:3
+Всего,33 тренировок
+
+Part 1,Пн,Вт,Ср,Чт,Пт,Сб,Вс,Тренировок
+W1,fullBody,bootcamp,,push,legs,,,4
+W2,fullBody,metcon,,pull,bootcamp,,,4
+W3,push,legs,pull,,fullBody,bootcamp,,5
+W4,fullBody,,bootcamp,,legs,,,3
+
+Part 2,Пн,Вт,Ср,Чт,Пт,Сб,Вс,Тренировок
+W5,upperBody,bootcamp,,fullBody,metcon,,,4
+W6,fullBody,metcon,push,,pull,bootcamp,,5
+W7,upperBody,legs,fullBody,,bootcamp,metcon,,5
+W8,fullBody,,bootcamp,,upperBody,,,3
+
+Тип,Кол-во,%
+fullBody,8,24.2%
+bootcamp,8,24.2%
+legs,4,12.1%
+metcon,4,12.1%
+push,3,9.1%
+pull,3,9.1%
+upperBody,3,9.1%
+Итого,33,100%

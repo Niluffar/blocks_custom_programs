@@ -29,7 +29,8 @@ class PlanValidator:
         recovery_rules: Dict[str, Dict],
         available_types: List[str],
         frequency: int,
-        reshape_per_block: int = 0
+        reshape_per_block: int = 0,
+        weekly_schedule: List[int] = None
     ) -> Tuple[bool, List[str]]:
         """
         Валидация плана на соответствие всем правилам.
@@ -38,14 +39,19 @@ class PlanValidator:
             plan: Список тренировок recommendedPlan
             recovery_rules: Правила восстановления мышц
             available_types: Доступные типы программ в клубе
-            frequency: Целевая частота тренировок в неделю
+            frequency: Базовая частота тренировок в неделю (используется если weekly_schedule не задан)
             reshape_per_block: Лимит тренировок Reshape на этот блок (0 = недоступен)
+            weekly_schedule: Понедельный график частот [W1..W8] (волнообразная периодизация)
 
         Returns:
             Tuple[bool, List[str]]: (is_valid, errors)
                 - is_valid: True если план валиден
                 - errors: Список ошибок (пустой если план валиден)
         """
+        # Если weekly_schedule не передан, создаём ровный из frequency
+        if weekly_schedule is None:
+            weekly_schedule = [frequency] * 8
+
         errors = []
 
         # 1. Проверка базовой структуры
@@ -53,7 +59,7 @@ class PlanValidator:
         errors.extend(structure_errors)
 
         # 2. Проверка количества тренировок
-        count_errors = self._validate_workout_count(plan, frequency)
+        count_errors = self._validate_workout_count(plan, frequency, weekly_schedule)
         errors.extend(count_errors)
 
         # 3. Проверка каждой тренировки
@@ -65,8 +71,8 @@ class PlanValidator:
         recovery_errors = self._validate_recovery_rules(plan, recovery_rules)
         errors.extend(recovery_errors)
 
-        # 5. Проверка частоты по неделям
-        frequency_errors = self._validate_weekly_frequency(plan, frequency)
+        # 5. Проверка частоты по неделям (по weekly_schedule)
+        frequency_errors = self._validate_weekly_frequency(plan, frequency, weekly_schedule)
         errors.extend(frequency_errors)
 
         # 6. Проверка распределения по частям
@@ -76,6 +82,18 @@ class PlanValidator:
         # 7. Проверка лимита Reshape на блок
         reshape_errors = self._validate_reshape_limit(plan, reshape_per_block)
         errors.extend(reshape_errors)
+
+        # 8. Проверка разнообразия типов программ
+        diversity_errors = self._validate_diversity(plan)
+        errors.extend(diversity_errors)
+
+        # 9. Проверка стыков недель (одинаковый тип конец→начало)
+        seam_errors = self._validate_week_seams(plan)
+        errors.extend(seam_errors)
+
+        # 10. Проверка баланса push/pull
+        balance_errors = self._validate_push_pull_balance(plan)
+        errors.extend(balance_errors)
 
         is_valid = len(errors) == 0
         return is_valid, errors
@@ -94,19 +112,33 @@ class PlanValidator:
 
         return errors
 
-    def _validate_workout_count(self, plan: List[Dict], frequency: int) -> List[str]:
+    def _validate_workout_count(
+        self,
+        plan: List[Dict],
+        frequency: int,
+        weekly_schedule: List[int] = None
+    ) -> List[str]:
         """Проверка общего количества тренировок."""
         errors = []
 
         total_workouts = len(plan)
-        min_workouts = frequency * 8  # 8 недель
-        max_workouts = 5 * 8  # Максимум 5 тренировок в неделю × 8 недель
 
-        if total_workouts < min_workouts or total_workouts > max_workouts:
-            errors.append(
-                f"Неверное общее количество тренировок: {total_workouts} "
-                f"(ожидается {min_workouts}-{max_workouts} для частоты {frequency})"
-            )
+        if weekly_schedule:
+            expected_total = sum(weekly_schedule)
+            max_workouts = 5 * 8
+            if total_workouts != expected_total:
+                errors.append(
+                    f"Неверное общее количество тренировок: {total_workouts} "
+                    f"(ожидается {expected_total} по графику {weekly_schedule})"
+                )
+        else:
+            min_workouts = frequency * 8
+            max_workouts = 5 * 8
+            if total_workouts < min_workouts or total_workouts > max_workouts:
+                errors.append(
+                    f"Неверное общее количество тренировок: {total_workouts} "
+                    f"(ожидается {min_workouts}-{max_workouts} для частоты {frequency})"
+                )
 
         return errors
 
@@ -210,19 +242,26 @@ class PlanValidator:
     def _validate_weekly_frequency(
         self,
         plan: List[Dict],
-        target_frequency: int
+        target_frequency: int,
+        weekly_schedule: List[int] = None
     ) -> List[str]:
-        """Проверка частоты тренировок по неделям."""
+        """Проверка частоты тренировок по неделям (с поддержкой волнообразной периодизации)."""
         errors = []
 
         for week in range(1, 9):
             week_workouts = [w for w in plan if w.get('week') == week]
             actual_frequency = len(week_workouts)
 
-            if actual_frequency != target_frequency:
+            # Ожидаемая частота: из weekly_schedule если есть, иначе единая target_frequency
+            if weekly_schedule and len(weekly_schedule) >= week:
+                expected = weekly_schedule[week - 1]
+            else:
+                expected = target_frequency
+
+            if actual_frequency != expected:
                 errors.append(
                     f"Неделя {week}: неверная частота {actual_frequency} "
-                    f"(ожидается {target_frequency})"
+                    f"(ожидается {expected})"
                 )
 
         return errors
@@ -299,12 +338,114 @@ class PlanValidator:
 
         return errors
 
+    def _validate_diversity(self, plan: List[Dict]) -> List[str]:
+        """Проверка разнообразия типов программ."""
+        errors = []
+
+        distribution = self._get_type_distribution(plan)
+        total = sum(distribution.values())
+        if total == 0:
+            return errors
+
+        unique_types = len(distribution)
+
+        # Минимум 4 разных типа программ
+        if unique_types < 4:
+            errors.append(
+                f"Слишком мало разных типов программ: {unique_types} "
+                f"(минимум 4). Использованы: {', '.join(distribution.keys())}"
+            )
+
+        # Ни один тип не должен превышать 25%
+        for ptype, count in distribution.items():
+            pct = (count / total) * 100
+            if pct > 25:
+                errors.append(
+                    f"Тип '{ptype}' составляет {pct:.0f}% плана ({count}/{total}) — "
+                    f"максимум допустимо 25%. Замени часть на другие типы."
+                )
+
+        # Кардио-типы (bootcamp + metcon) суммарно не более 45%
+        cardio_types = ['bootcamp', 'metcon']
+        cardio_count = sum(distribution.get(t, 0) for t in cardio_types)
+        cardio_pct = (cardio_count / total) * 100
+        if cardio_pct > 45:
+            errors.append(
+                f"Слишком много кардио: bootcamp+metcon = {cardio_count}/{total} ({cardio_pct:.0f}%). "
+                f"Максимум 45%. Добавь силовые (push, pull, legs, upperBody, fullBody)."
+            )
+
+        # Силовые типы суммарно не менее 20%
+        strength_types = ['push', 'pull', 'legs', 'upperBody', 'armBlast',
+                          'gluteLab', 'fullBody', 'functionalFullBody']
+        strength_count = sum(distribution.get(t, 0) for t in strength_types)
+        strength_pct = (strength_count / total) * 100
+        if strength_pct < 20:
+            errors.append(
+                f"Слишком мало силовых: {strength_count}/{total} ({strength_pct:.0f}%). "
+                f"Минимум 20%. Добавь push, pull, legs, upperBody или fullBody."
+            )
+
+        return errors
+
+    def _validate_week_seams(self, plan: List[Dict]) -> List[str]:
+        """Проверка: одинаковый тип на конце недели и начале следующей."""
+        errors = []
+
+        for week in range(1, 8):  # 1-7 (проверяем стык с следующей)
+            # Последняя тренировка текущей недели
+            week_workouts = [w for w in plan if w.get('week') == week]
+            next_week_workouts = [w for w in plan if w.get('week') == week + 1]
+
+            if not week_workouts or not next_week_workouts:
+                continue
+
+            week_workouts.sort(key=lambda x: x.get('day', 0))
+            next_week_workouts.sort(key=lambda x: x.get('day', 0))
+
+            last = week_workouts[-1]
+            first = next_week_workouts[0]
+
+            last_type = last.get('programSetTypes', [''])[0] if last.get('programSetTypes') else ''
+            first_type = first.get('programSetTypes', [''])[0] if first.get('programSetTypes') else ''
+
+            if last_type and first_type and last_type == first_type:
+                errors.append(
+                    f"Одинаковый тип на стыке недель {week}→{week+1}: "
+                    f"'{last_type}' (день {last.get('day')}) → '{first_type}' (день {first.get('day')}). "
+                    f"Замени один из них на другой тип."
+                )
+
+        return errors
+
+    def _validate_push_pull_balance(self, plan: List[Dict]) -> List[str]:
+        """Проверка: push и pull должны быть примерно равны (±1)."""
+        errors = []
+
+        distribution = self._get_type_distribution(plan)
+        push_count = distribution.get('push', 0)
+        pull_count = distribution.get('pull', 0)
+
+        # Только если оба используются
+        if push_count == 0 and pull_count == 0:
+            return errors
+
+        diff = abs(push_count - pull_count)
+        if diff > 1:
+            errors.append(
+                f"Дисбаланс push/pull: push={push_count}, pull={pull_count} (разница {diff}). "
+                f"Должны быть равны ±1."
+            )
+
+        return errors
+
     def get_validation_summary(
         self,
         plan: List[Dict],
         recovery_rules: Dict[str, Dict],
         available_types: List[str],
-        frequency: int
+        frequency: int,
+        weekly_schedule: List[int] = None
     ) -> Dict[str, Any]:
         """
         Получить детальную сводку валидации.
@@ -316,7 +457,10 @@ class PlanValidator:
             - warnings: List[str]  (потенциальные проблемы, не критичные)
             - stats: Dict (статистика по плану)
         """
-        is_valid, errors = self.validate_plan(plan, recovery_rules, available_types, frequency)
+        is_valid, errors = self.validate_plan(
+            plan, recovery_rules, available_types, frequency,
+            weekly_schedule=weekly_schedule
+        )
 
         # Статистика
         stats = {

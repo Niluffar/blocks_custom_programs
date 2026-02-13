@@ -1,0 +1,411 @@
+{
+  "recommendedPlan": [
+    {
+      "text": "Выполни тренировку Push",
+      "week": 1,
+      "day": 1,
+      "programSetTypes": [
+        "push",
+        "upperBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Legs",
+      "week": 1,
+      "day": 3,
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Pull",
+      "week": 1,
+      "day": 5,
+      "programSetTypes": [
+        "pull",
+        "upperBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Upper Body",
+      "week": 2,
+      "day": 1,
+      "programSetTypes": [
+        "upperBody",
+        "push",
+        "pull"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Legs",
+      "week": 2,
+      "day": 3,
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку BootCamp",
+      "week": 2,
+      "day": 5,
+      "programSetTypes": [
+        "bootcamp",
+        "legs"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Push",
+      "week": 3,
+      "day": 1,
+      "programSetTypes": [
+        "push",
+        "upperBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Legs",
+      "week": 3,
+      "day": 2,
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Pull",
+      "week": 3,
+      "day": 4,
+      "programSetTypes": [
+        "pull",
+        "upperBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Glute Lab",
+      "week": 3,
+      "day": 5,
+      "programSetTypes": [
+        "gluteLab",
+        "legs"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Push",
+      "week": 4,
+      "day": 1,
+      "programSetTypes": [
+        "push",
+        "upperBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку BootCamp",
+      "week": 4,
+      "day": 3,
+      "programSetTypes": [
+        "bootcamp",
+        "legs"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Pull",
+      "week": 4,
+      "day": 5,
+      "programSetTypes": [
+        "pull",
+        "upperBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Pull",
+      "week": 5,
+      "day": 1,
+      "programSetTypes": [
+        "pull",
+        "upperBody"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Legs",
+      "week": 5,
+      "day": 3,
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Push",
+      "week": 5,
+      "day": 5,
+      "programSetTypes": [
+        "push",
+        "upperBody"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Upper Body",
+      "week": 6,
+      "day": 1,
+      "programSetTypes": [
+        "upperBody",
+        "pull",
+        "push"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Legs",
+      "week": 6,
+      "day": 3,
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Arm Blast",
+      "week": 6,
+      "day": 5,
+      "programSetTypes": [
+        "armBlast",
+        "push",
+        "pull"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Push",
+      "week": 7,
+      "day": 1,
+      "programSetTypes": [
+        "push",
+        "upperBody"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Pull",
+      "week": 7,
+      "day": 2,
+      "programSetTypes": [
+        "pull",
+        "upperBody"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Legs",
+      "week": 7,
+      "day": 4,
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку BootCamp",
+      "week": 7,
+      "day": 5,
+      "programSetTypes": [
+        "bootcamp",
+        "legs"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Pull",
+      "week": 8,
+      "day": 1,
+      "programSetTypes": [
+        "pull",
+        "upperBody"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Glute Lab",
+      "week": 8,
+      "day": 3,
+      "programSetTypes": [
+        "gluteLab",
+        "legs"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Reshape",
+      "week": 8,
+      "day": 5,
+      "programSetTypes": [
+        "reshape",
+        "gluteLab"
+      ],
+      "part": 2
+    }
+  ],
+  "tasksProgress": [
+    {
+      "text": "Выполни 6 тренировок Push или Pull",
+      "programSetTypes": [
+        "push",
+        "pull"
+      ],
+      "part": 1,
+      "target": 6,
+      "done": 0,
+      "week": 1
+    },
+    {
+      "text": "Выполни 4 тренировки Legs или GluteLab",
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 1,
+      "target": 4,
+      "done": 0,
+      "week": 1
+    },
+    {
+      "text": "Выполни 1 тренировку Upper Body",
+      "programSetTypes": [
+        "upperBody"
+      ],
+      "part": 1,
+      "target": 1,
+      "done": 0,
+      "week": 2
+    },
+    {
+      "text": "Выполни 2 тренировки BootCamp",
+      "programSetTypes": [
+        "bootcamp"
+      ],
+      "part": 1,
+      "target": 2,
+      "done": 0,
+      "week": 2
+    },
+    {
+      "text": "Выполни 5 тренировок Push или Pull",
+      "programSetTypes": [
+        "push",
+        "pull"
+      ],
+      "part": 2,
+      "target": 5,
+      "done": 0,
+      "week": 5
+    },
+    {
+      "text": "Выполни 4 тренировки Legs или GluteLab",
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 2,
+      "target": 4,
+      "done": 0,
+      "week": 5
+    },
+    {
+      "text": "Выполни 1 тренировку Upper Body",
+      "programSetTypes": [
+        "upperBody"
+      ],
+      "part": 2,
+      "target": 1,
+      "done": 0,
+      "week": 6
+    },
+    {
+      "text": "Выполни 1 тренировку Arms",
+      "programSetTypes": [
+        "armBlast"
+      ],
+      "part": 2,
+      "target": 1,
+      "done": 0,
+      "week": 6
+    },
+    {
+      "text": "Выполни 1 тренировку BootCamp",
+      "programSetTypes": [
+        "bootcamp"
+      ],
+      "part": 2,
+      "target": 1,
+      "done": 0,
+      "week": 7
+    },
+    {
+      "text": "Выполни 1 тренировку Reshape",
+      "programSetTypes": [
+        "reshape"
+      ],
+      "part": 2,
+      "target": 1,
+      "done": 0,
+      "week": 8
+    }
+  ],
+  "metadata": {
+    "user_id": "60f00f4fe8f2e00017b39063",
+    "frequency": 3,
+    "weekly_schedule": [
+      3,
+      3,
+      4,
+      3,
+      3,
+      3,
+      4,
+      3
+    ],
+    "historical_frequency": 2.4,
+    "progression_level": "beginner",
+    "goal": "масса",
+    "focus_areas": [
+      "ноги"
+    ],
+    "club_id": "683704d8c85fb0a6b1f5a8ca",
+    "club_name": "HJ Villa",
+    "available_program_types": [
+      "armBlast",
+      "assessment",
+      "bootcamp",
+      "education",
+      "endGame",
+      "gluteLab",
+      "legs",
+      "pull",
+      "push",
+      "reshape",
+      "upperBody"
+    ],
+    "reshape_per_block": 1,
+    "total_workouts": 26,
+    "total_tasks": 10
+  }
+}

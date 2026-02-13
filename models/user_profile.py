@@ -25,7 +25,8 @@ class UserProfile:
     body_composition: Optional[Dict] = None  # BMI, fat%, muscle mass, etc.
 
     # Рассчитанные параметры
-    frequency: int = 3  # 3-5 тренировок в неделю
+    frequency: int = 3  # базовая частота 3-5 тренировок в неделю
+    weekly_schedule: List[int] = field(default_factory=lambda: [3]*8)  # частота по неделям [W1..W8]
 
     # История
     historical_frequency: float = 0.0  # реальная частота посещений

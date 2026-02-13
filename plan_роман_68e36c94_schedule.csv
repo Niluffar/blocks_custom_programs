@@ -1,0 +1,31 @@
+﻿Цель,масса
+Уровень,intermediate
+Частота,3 тр/нед
+Клуб,HJ Promenade
+Фокус,"ноги, верх_тела, баланс"
+График,W1:3 | W2:3 | W3:3 | W4:3 | W5:3 | W6:3 | W7:3 | W8:3
+Всего,24 тренировок
+
+Part 1,Пн,Вт,Ср,Чт,Пт,Сб,Вс,Тренировок
+W1,push,,legs,,pull,,,3
+W2,bootcamp,,upperBody,,legs,,,3
+W3,pull,,legs,,push,,,3
+W4,fullBody,,bootcamp,,upperBody,,,3
+
+Part 2,Пн,Вт,Ср,Чт,Пт,Сб,Вс,Тренировок
+W5,push,,legs,,armBlast,,,3
+W6,pull,,gluteLab,,metcon,,,3
+W7,fullBody,,armBlast,,bootcamp,,,3
+W8,push,,legs,,pull,,,3
+
+Тип,Кол-во,%
+legs,5,20.8%
+push,4,16.7%
+pull,4,16.7%
+bootcamp,3,12.5%
+upperBody,2,8.3%
+fullBody,2,8.3%
+armBlast,2,8.3%
+gluteLab,1,4.2%
+metcon,1,4.2%
+Итого,24,100%

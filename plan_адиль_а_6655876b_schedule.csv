@@ -1,0 +1,28 @@
+﻿Цель,похудение
+Уровень,beginner
+Частота,3 тр/нед
+Клуб,HJ Colibri
+Фокус,"ноги, верх_тела, выносливость, баланс"
+График,W1:3 | W2:3 | W3:4 | W4:3 | W5:3 | W6:3 | W7:4 | W8:3
+Всего,26 тренировок
+
+Part 1,Пн,Вт,Ср,Чт,Пт,Сб,Вс,Тренировок
+W1,fullBody,,bootcamp,,legs,,,3
+W2,metcon,,fullBody,,bootcamp,,,3
+W3,legs,metcon,,fullBody,bootcamp,,,4
+W4,metcon,,legs,,metcon,,,3
+
+Part 2,Пн,Вт,Ср,Чт,Пт,Сб,Вс,Тренировок
+W5,push,,bootcamp,,pull,,,3
+W6,legs,,push,,pull,,,3
+W7,pull,metcon,,push,bootcamp,,,4
+W8,pull,,bootcamp,,push,,,3
+
+Тип,Кол-во,%
+bootcamp,6,23.1%
+metcon,5,19.2%
+legs,4,15.4%
+push,4,15.4%
+pull,4,15.4%
+fullBody,3,11.5%
+Итого,26,100%

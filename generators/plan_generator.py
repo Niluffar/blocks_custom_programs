@@ -5,6 +5,7 @@
 """
 import os
 import json
+import copy
 import logging
 from typing import Dict, List, Optional, Any
 from pathlib import Path
@@ -117,6 +118,7 @@ class RecommendedPlanGenerator:
         )
 
         logger.info(f"Профиль: цель={user_profile.goal}, частота={user_profile.frequency}, "
+                   f"weekly_schedule={user_profile.weekly_schedule}, "
                    f"опыт={user_profile.experience_level}, прогрессия={user_profile.progression_level}")
 
         # 2. Получить доступные программы в клубе (из РЕАЛЬНЫХ programsets в MongoDB)
@@ -143,16 +145,11 @@ class RecommendedPlanGenerator:
                 f"не найдено ни одной доступной программы. Проверьте programsets в MongoDB."
             )
 
-        # Лимит Reshape на этот блок (рассчитано из pilatesVisits / кол-во блоков в абонементе)
-        reshape_per_block = club_data.get('reshape_per_block', 0)
+        # Reshape: если доступен в клубе — оставляем, лимит больше не ограничиваем
+        reshape_per_block = 0  # Без лимита
 
         logger.info(f"Клуб: {club_data.get('club_name', 'Не указан')}, "
-                   f"Доступно программ: {len(available_types)}, "
-                   f"Reshape на блок: {reshape_per_block}")
-
-        # Если reshape_per_block = 0 — убрать reshape из доступных типов
-        if reshape_per_block <= 0:
-            available_types = [t for t in available_types if t != 'reshape']
+                   f"Доступно программ: {len(available_types)}")
 
         # Финальная проверка что после всех фильтраций остались программы
         if not available_types:
@@ -179,7 +176,8 @@ class RecommendedPlanGenerator:
             available_types=available_types,
             recovery_rules=RECOVERY_RULES,
             pattern_examples=pattern_examples,
-            reshape_per_block=reshape_per_block
+            reshape_per_block=reshape_per_block,
+            weekly_schedule=user_profile.weekly_schedule
         )
 
         # 5. Генерация плана через LLM с валидацией
@@ -189,7 +187,8 @@ class RecommendedPlanGenerator:
             user_profile=user_profile,
             available_types=available_types,
             max_attempts=max_attempts,
-            reshape_per_block=reshape_per_block
+            reshape_per_block=reshape_per_block,
+            weekly_schedule=user_profile.weekly_schedule
         )
 
         logger.info(f"План сгенерирован: {len(recommended_plan)} тренировок")
@@ -216,6 +215,7 @@ class RecommendedPlanGenerator:
             'metadata': {
                 'user_id': user_id,
                 'frequency': user_profile.frequency,
+                'weekly_schedule': user_profile.weekly_schedule,
                 'historical_frequency': user_profile.historical_frequency,
                 'progression_level': user_profile.progression_level,
                 'goal': user_profile.goal,
@@ -238,7 +238,8 @@ class RecommendedPlanGenerator:
         user_profile: Any,
         available_types: List[str],
         max_attempts: int = 3,
-        reshape_per_block: int = 0
+        reshape_per_block: int = 0,
+        weekly_schedule: List[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Генерация плана через LLM с валидацией и повторными попытками.
@@ -249,6 +250,7 @@ class RecommendedPlanGenerator:
             available_types: Доступные типы программ
             max_attempts: Максимальное количество попыток
             reshape_per_block: Лимит тренировок Reshape на этот блок
+            weekly_schedule: Понедельный график частот [W1..W8]
 
         Returns:
             Валидный recommendedPlan
@@ -274,13 +276,17 @@ class RecommendedPlanGenerator:
                     logger.warning(f"Попытка {attempt}: не удалось распарсить JSON")
                     continue
 
+                # Автоисправление порядка тренировок внутри недель
+                plan = self._auto_fix_recovery(plan)
+
                 # Валидация
                 is_valid, errors = self.validator.validate_plan(
                     plan=plan,
                     recovery_rules=RECOVERY_RULES,
                     available_types=available_types,
                     frequency=user_profile.frequency,
-                    reshape_per_block=reshape_per_block
+                    reshape_per_block=reshape_per_block,
+                    weekly_schedule=weekly_schedule
                 )
 
                 if is_valid:
@@ -351,6 +357,116 @@ class RecommendedPlanGenerator:
             return json.loads(text)
         except json.JSONDecodeError:
             return None
+
+    def _auto_fix_recovery(self, plan: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Автоисправление нарушений восстановления путём переупорядочивания тренировок внутри недели.
+
+        Не меняет типы тренировок — только переставляет их между слотами дней.
+        Дни (1,2,3,5,6) остаются фиксированными, меняется только содержимое (programSetTypes, text).
+
+        Returns:
+            Исправленный план (или оригинал, если исправление невозможно)
+        """
+        from rules.recovery_rules import can_perform
+
+        plan = copy.deepcopy(plan)
+
+        for week_num in range(1, 9):
+            # Индексы тренировок этой недели в общем плане
+            week_entries = [
+                (i, w) for i, w in enumerate(plan)
+                if w.get('week') == week_num
+            ]
+            if not week_entries:
+                continue
+
+            # Сортируем по дню
+            week_entries.sort(key=lambda x: x[1].get('day', 0))
+
+            # Проверяем есть ли нарушения
+            types_list = [
+                w['programSetTypes'][0]
+                for _, w in week_entries
+                if w.get('programSetTypes')
+            ]
+
+            has_violation = False
+            for i in range(len(types_list)):
+                if not can_perform(types_list[i], types_list[:i]):
+                    has_violation = True
+                    break
+
+            if not has_violation:
+                continue
+
+            # Ищем валидную перестановку
+            valid_order = self._find_valid_ordering(types_list)
+
+            if valid_order is None:
+                logger.warning(
+                    f"Auto-fix: неделя {week_num} — невозможно найти валидный порядок "
+                    f"для типов {types_list}"
+                )
+                continue
+
+            # Собираем содержимое тренировок (programSetTypes + text)
+            workout_contents = [
+                {
+                    'programSetTypes': week_entries[i][1]['programSetTypes'],
+                    'text': week_entries[i][1]['text']
+                }
+                for i in range(len(week_entries))
+            ]
+
+            # Переставляем содержимое согласно найденному порядку
+            reordered = [workout_contents[i] for i in valid_order]
+
+            for pos, content in enumerate(reordered):
+                plan_idx = week_entries[pos][0]
+                plan[plan_idx]['programSetTypes'] = content['programSetTypes']
+                plan[plan_idx]['text'] = content['text']
+
+            logger.info(f"Auto-fix: неделя {week_num} переупорядочена для соблюдения восстановления")
+
+        return plan
+
+    def _find_valid_ordering(self, types: List[str]) -> Optional[List[int]]:
+        """
+        Найти перестановку индексов, удовлетворяющую правилам восстановления.
+        Использует backtracking. Безопасно для списков до 5 элементов (макс 120 перестановок).
+
+        Args:
+            types: Список типов тренировок в исходном порядке
+
+        Returns:
+            Список индексов в валидном порядке, или None если невозможно
+        """
+        from rules.recovery_rules import can_perform
+
+        n = len(types)
+
+        def backtrack(used: set, current_order: list) -> Optional[list]:
+            if len(current_order) == n:
+                return current_order[:]
+
+            prev_types = [types[i] for i in current_order]
+
+            for i in range(n):
+                if i in used:
+                    continue
+                if can_perform(types[i], prev_types):
+                    used.add(i)
+                    current_order.append(i)
+                    result = backtrack(used, current_order)
+                    if result is not None:
+                        return result
+                    current_order.pop()
+                    used.discard(i)
+
+            return None
+
+        return backtrack(set(), [])
 
     def get_generation_stats(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """

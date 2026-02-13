@@ -1,0 +1,505 @@
+{
+  "recommendedPlan": [
+    {
+      "text": "Выполни тренировку Full Body",
+      "week": 1,
+      "day": 1,
+      "programSetTypes": [
+        "fullBody",
+        "legs",
+        "upperBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку BootCamp",
+      "week": 1,
+      "day": 2,
+      "programSetTypes": [
+        "bootcamp",
+        "metcon"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Push",
+      "week": 1,
+      "day": 4,
+      "programSetTypes": [
+        "push",
+        "upperBody",
+        "armBlast"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Legs",
+      "week": 1,
+      "day": 5,
+      "programSetTypes": [
+        "legs",
+        "gluteLab",
+        "fullBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Full Body",
+      "week": 2,
+      "day": 1,
+      "programSetTypes": [
+        "fullBody",
+        "upperBody",
+        "legs"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку MetCon",
+      "week": 2,
+      "day": 2,
+      "programSetTypes": [
+        "metcon",
+        "bootcamp"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Pull",
+      "week": 2,
+      "day": 4,
+      "programSetTypes": [
+        "pull",
+        "upperBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку BootCamp",
+      "week": 2,
+      "day": 5,
+      "programSetTypes": [
+        "bootcamp",
+        "metcon"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Push",
+      "week": 3,
+      "day": 1,
+      "programSetTypes": [
+        "push",
+        "armBlast",
+        "upperBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Legs",
+      "week": 3,
+      "day": 2,
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Pull",
+      "week": 3,
+      "day": 3,
+      "programSetTypes": [
+        "pull",
+        "upperBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Full Body",
+      "week": 3,
+      "day": 5,
+      "programSetTypes": [
+        "fullBody",
+        "bootcamp"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку BootCamp",
+      "week": 3,
+      "day": 6,
+      "programSetTypes": [
+        "bootcamp",
+        "metcon"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Full Body",
+      "week": 4,
+      "day": 1,
+      "programSetTypes": [
+        "fullBody",
+        "legs",
+        "upperBody"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку BootCamp",
+      "week": 4,
+      "day": 3,
+      "programSetTypes": [
+        "bootcamp",
+        "metcon"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Legs",
+      "week": 4,
+      "day": 5,
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 1
+    },
+    {
+      "text": "Выполни тренировку Upper Body",
+      "week": 5,
+      "day": 1,
+      "programSetTypes": [
+        "upperBody",
+        "push",
+        "pull"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку BootCamp",
+      "week": 5,
+      "day": 2,
+      "programSetTypes": [
+        "bootcamp",
+        "metcon"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Full Body",
+      "week": 5,
+      "day": 4,
+      "programSetTypes": [
+        "fullBody",
+        "legs",
+        "upperBody"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку MetCon",
+      "week": 5,
+      "day": 5,
+      "programSetTypes": [
+        "metcon",
+        "bootcamp"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Full Body",
+      "week": 6,
+      "day": 1,
+      "programSetTypes": [
+        "fullBody",
+        "bootcamp"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку MetCon",
+      "week": 6,
+      "day": 2,
+      "programSetTypes": [
+        "metcon",
+        "bootcamp"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Push",
+      "week": 6,
+      "day": 3,
+      "programSetTypes": [
+        "push",
+        "upperBody",
+        "armBlast"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Pull",
+      "week": 6,
+      "day": 5,
+      "programSetTypes": [
+        "pull",
+        "upperBody"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку BootCamp",
+      "week": 6,
+      "day": 6,
+      "programSetTypes": [
+        "bootcamp",
+        "fullBody"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Upper Body",
+      "week": 7,
+      "day": 1,
+      "programSetTypes": [
+        "upperBody",
+        "pull",
+        "push"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Legs",
+      "week": 7,
+      "day": 2,
+      "programSetTypes": [
+        "legs",
+        "gluteLab",
+        "fullBody"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Full Body",
+      "week": 7,
+      "day": 3,
+      "programSetTypes": [
+        "fullBody",
+        "bootcamp"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку BootCamp",
+      "week": 7,
+      "day": 5,
+      "programSetTypes": [
+        "bootcamp",
+        "metcon"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку MetCon",
+      "week": 7,
+      "day": 6,
+      "programSetTypes": [
+        "metcon",
+        "bootcamp"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Full Body",
+      "week": 8,
+      "day": 1,
+      "programSetTypes": [
+        "fullBody",
+        "legs",
+        "upperBody"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку BootCamp",
+      "week": 8,
+      "day": 3,
+      "programSetTypes": [
+        "bootcamp",
+        "metcon"
+      ],
+      "part": 2
+    },
+    {
+      "text": "Выполни тренировку Upper Body",
+      "week": 8,
+      "day": 5,
+      "programSetTypes": [
+        "upperBody",
+        "push",
+        "pull"
+      ],
+      "part": 2
+    }
+  ],
+  "tasksProgress": [
+    {
+      "text": "Выполни 4 тренировки Push или Pull",
+      "programSetTypes": [
+        "push",
+        "pull"
+      ],
+      "part": 1,
+      "target": 4,
+      "done": 0,
+      "week": 1
+    },
+    {
+      "text": "Выполни 3 тренировки Legs или GluteLab",
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 1,
+      "target": 3,
+      "done": 0,
+      "week": 1
+    },
+    {
+      "text": "Выполни 4 тренировки Full Body",
+      "programSetTypes": [
+        "fullBody"
+      ],
+      "part": 1,
+      "target": 4,
+      "done": 0,
+      "week": 1
+    },
+    {
+      "text": "Выполни 4 тренировки BootCamp",
+      "programSetTypes": [
+        "bootcamp"
+      ],
+      "part": 1,
+      "target": 4,
+      "done": 0,
+      "week": 1
+    },
+    {
+      "text": "Выполни 1 тренировку MetCon",
+      "programSetTypes": [
+        "metcon"
+      ],
+      "part": 1,
+      "target": 1,
+      "done": 0,
+      "week": 2
+    },
+    {
+      "text": "Выполни 3 тренировки Upper Body",
+      "programSetTypes": [
+        "upperBody"
+      ],
+      "part": 2,
+      "target": 3,
+      "done": 0,
+      "week": 5
+    },
+    {
+      "text": "Выполни 4 тренировки BootCamp",
+      "programSetTypes": [
+        "bootcamp"
+      ],
+      "part": 2,
+      "target": 4,
+      "done": 0,
+      "week": 5
+    },
+    {
+      "text": "Выполни 4 тренировки Full Body",
+      "programSetTypes": [
+        "fullBody"
+      ],
+      "part": 2,
+      "target": 4,
+      "done": 0,
+      "week": 5
+    },
+    {
+      "text": "Выполни 3 тренировки MetCon",
+      "programSetTypes": [
+        "metcon"
+      ],
+      "part": 2,
+      "target": 3,
+      "done": 0,
+      "week": 5
+    },
+    {
+      "text": "Выполни 2 тренировки Push или Pull",
+      "programSetTypes": [
+        "push",
+        "pull"
+      ],
+      "part": 2,
+      "target": 2,
+      "done": 0,
+      "week": 6
+    },
+    {
+      "text": "Выполни 1 тренировку Legs или GluteLab",
+      "programSetTypes": [
+        "legs",
+        "gluteLab"
+      ],
+      "part": 2,
+      "target": 1,
+      "done": 0,
+      "week": 7
+    }
+  ],
+  "metadata": {
+    "user_id": "666de3b650414200326127d0",
+    "frequency": 4,
+    "weekly_schedule": [
+      4,
+      4,
+      5,
+      3,
+      4,
+      5,
+      5,
+      3
+    ],
+    "historical_frequency": 4.0,
+    "progression_level": "intermediate",
+    "goal": "здоровье",
+    "focus_areas": [
+      "ноги",
+      "баланс",
+      "верх_тела",
+      "выносливость"
+    ],
+    "club_id": "65e9e70cbd4814536c5e27e9",
+    "club_name": "HJ Colibri",
+    "available_program_types": [
+      "armBlast",
+      "assessment",
+      "bootcamp",
+      "education",
+      "endGame",
+      "fullBody",
+      "gluteLab",
+      "legs",
+      "metcon",
+      "pull",
+      "push",
+      "upperBody"
+    ],
+    "reshape_per_block": 1,
+    "total_workouts": 33,
+    "total_tasks": 11
+  }
+}

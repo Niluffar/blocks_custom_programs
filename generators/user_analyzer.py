@@ -77,6 +77,15 @@ class UserProfileAnalyzer:
         weight = questionnaire.get('weight', 70)
         current_form = questionnaire.get('current_form', 'среднее')
 
+        # Волнообразная периодизация: понедельный график частот
+        weekly_schedule = self._build_weekly_schedule(
+            base_frequency=frequency,
+            progression_level=progression_level,
+            experience_level=experience_level,
+            goal=goal,
+            current_break=current_break
+        )
+
         return UserProfile(
             gender=gender,
             age=age,
@@ -87,6 +96,7 @@ class UserProfileAnalyzer:
             focus_areas=focus_areas,
             experience_level=experience_level,
             frequency=frequency,
+            weekly_schedule=weekly_schedule,
             health_restrictions=health_restrictions,
             body_composition=body_composition,
             current_break=current_break,
@@ -129,8 +139,11 @@ class UserProfileAnalyzer:
         elif experience_level == 'любитель':
             base_frequency += 1
 
-        # По цели (масса и рельеф требуют больше)
-        if goal in ['масса', 'рельеф']:
+        # По цели:
+        # - Масса НЕ требует высокой частоты — мышцы растут во время отдыха,
+        #   важнее интенсивность и восстановление. 4 тренировки/неделю — оптимум.
+        # - Рельеф и похудение выигрывают от чуть большей частоты (больше расход калорий)
+        if goal in ['рельеф', 'похудение']:
             base_frequency += 1
 
         # По текущей форме (если уже спортивный и тренируется)
@@ -171,10 +184,72 @@ class UserProfileAnalyzer:
         if current_form == 'полное' and goal == 'похудение':
             base_frequency = min(base_frequency, 4)  # Не больше 4
 
-        # Clamp в диапазон 3-5
-        frequency = max(3, min(5, base_frequency))
+        # Потолок частоты:
+        # - 5 только для advanced (подтверждённый опытом уровень)
+        # - Для остальных макс 4 — достаточно для любой цели, меньше риск перетренированности
+        max_freq = 5 if progression_level == 'advanced' else 4
+        frequency = max(3, min(max_freq, base_frequency))
 
         return frequency
+
+    def _build_weekly_schedule(
+        self,
+        base_frequency: int,
+        progression_level: str,
+        experience_level: str,
+        goal: str,
+        current_break: int
+    ) -> List[int]:
+        """
+        Построить понедельный график частот (волнообразная периодизация).
+
+        Принципы:
+        - Неделя 4 и 8: deload (разгрузка, -1 тренировка от базы)
+        - Part 1 (W1-4): адаптация/наращивание → deload
+        - Part 2 (W5-8): пиковая нагрузка → deload
+        - Новички (freq=3): ровный график без волн (телу и так хватает стресса)
+        - Для опытных: волна base → base+1 → base → base-1 (deload)
+
+        Clamp: каждую неделю от 3 до 5 тренировок.
+
+        Returns:
+            List[int] из 8 элементов — частота для каждой недели
+        """
+        f = base_frequency
+
+        # Новички или возврат после долгого перерыва — ровный график, только deload на 4/8
+        if experience_level in ('новичок', 'beginner') or current_break > 90:
+            if f <= 3:
+                # Для новичков на 3 — ровно, deload не нужен (и так минимум)
+                return [3] * 8
+            schedule = [f, f, f, max(f - 1, 3), f, f, f, max(f - 1, 3)]
+            return schedule
+
+        # Базовая частота 3: мягкая волна — одна нагрузочная неделя на каждую часть
+        # W3 и W7 — по 4 тренировки (микро-перегрузка), остальные по 3
+        if f == 3:
+            schedule = [3, 3, 4, 3, 3, 3, 4, 3]
+            return schedule
+
+        # Базовая частота 4: волна (4, 4, 5, 3, 4, 5, 5, 3)
+        if f == 4:
+            # Part 1: адаптация
+            # Part 2: прогрессия с пиком на W6-W7
+            schedule = [4, 4, 5, 3, 4, 5, 5, 3]
+            return schedule
+
+        # Базовая частота 5: волна (5, 5, 5, 4, 5, 5, 5, 4)
+        # При 5 тренировках/неделю повышать нельзя — уже максимум
+        # Deload на W4 и W8 до 4
+        if f == 5:
+            schedule = [5, 5, 5, 4, 5, 5, 5, 4]
+            return schedule
+
+        # Fallback
+        schedule = [f] * 8
+        schedule[3] = max(f - 1, 3)
+        schedule[7] = max(f - 1, 3)
+        return schedule
 
     def _extract_goal(self, questionnaire: Dict[str, Any]) -> str:
         """

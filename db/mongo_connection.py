@@ -100,6 +100,10 @@ class MongoConnection:
         """
         Получить активный HeroPass пользователя.
 
+        Активным считается HeroPass, где:
+        - isAvailable: true
+        - startTime <= текущее время <= endTime
+
         Args:
             user_id: ID пользователя (str или ObjectId)
 
@@ -107,14 +111,20 @@ class MongoConnection:
             Dict с данными HeroPass или None
         """
         from bson import ObjectId
+        from datetime import datetime
 
         # Конвертируем user_id в ObjectId если это строка
         if isinstance(user_id, str):
             user_id = ObjectId(user_id)
 
+        # Текущее время
+        now = datetime.utcnow()
+
         return cls.user_heropasses().find_one({
             "user": user_id,
-            "status": "active"
+            "isAvailable": True,
+            "startTime": {"$lte": now},
+            "endTime": {"$gte": now}
         })
 
     @classmethod
