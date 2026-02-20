@@ -6,9 +6,9 @@
 import os
 import json
 import copy
+import time
 import logging
 from typing import Dict, List, Optional, Any
-from pathlib import Path
 
 # Gemini API
 import google.generativeai as genai
@@ -23,8 +23,6 @@ from utils.pattern_loader import PatternLoader
 from rules.recovery_rules import RECOVERY_RULES
 
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -41,13 +39,12 @@ class RecommendedPlanGenerator:
     6. Генерация tasksProgress (tasks_generator)
     """
 
-    def __init__(self, gemini_api_key: Optional[str] = None, context_file_path: Optional[str] = None):
+    def __init__(self, gemini_api_key: Optional[str] = None):
         """
         Инициализация генератора.
 
         Args:
             gemini_api_key: API ключ для Gemini (опционально, берётся из .env)
-            context_file_path: Путь к "Контекст Путъ Атлета.md" (опционально)
         """
         # Инициализация компонентов
         self.user_analyzer = UserProfileAnalyzer()
@@ -57,18 +54,9 @@ class RecommendedPlanGenerator:
         self.validator = PlanValidator()
 
         # Инициализация загрузчика паттернов
-        if context_file_path is None:
-            # По умолчанию ищем в текущей директории проекта
-            project_root = Path(__file__).parent.parent
-            context_file_path = project_root / "Контекст Путъ Атлета.md"
-
-        try:
-            self.pattern_loader = PatternLoader(str(context_file_path))
-            self.pattern_loader.load_all_patterns()
-            logger.info(f"Загружено {len(self.pattern_loader.patterns)} паттернов из контекстного файла")
-        except FileNotFoundError:
-            logger.warning(f"Файл паттернов не найден: {context_file_path}. Генерация будет без примеров.")
-            self.pattern_loader = None
+        self.pattern_loader = PatternLoader()
+        self.pattern_loader.load_all_patterns()
+        logger.info(f"Загружено {len(self.pattern_loader.patterns)} паттернов")
 
         # Инициализация Gemini API
         api_key = gemini_api_key or os.getenv('GEMINI_API_KEY')
@@ -160,14 +148,12 @@ class RecommendedPlanGenerator:
             )
 
         # 3. Получить примеры паттернов для промпта
-        pattern_examples = []
-        if self.pattern_loader:
-            pattern_examples = self.pattern_loader.get_example_patterns_for_prompt(
-                goal=user_profile.goal,
-                experience_level=user_profile.experience_level,
-                max_examples=5
-            )
-            logger.info(f"Выбрано {len(pattern_examples)} примеров паттернов для промпта")
+        pattern_examples = self.pattern_loader.get_example_patterns_for_prompt(
+            goal=user_profile.goal,
+            experience_level=user_profile.experience_level,
+            max_examples=5
+        )
+        logger.info(f"Выбрано {len(pattern_examples)} примеров паттернов для промпта")
 
         # 4. Построить промпт для LLM
         logger.info("Этап 4: Построение промпта для LLM")
@@ -279,6 +265,9 @@ class RecommendedPlanGenerator:
                 # Автоисправление порядка тренировок внутри недель
                 plan = self._auto_fix_recovery(plan)
 
+                # Автоисправление позиции upperBody (после push/pull)
+                plan = self._auto_fix_upper_position(plan)
+
                 # Валидация
                 is_valid, errors = self.validator.validate_plan(
                     plan=plan,
@@ -286,7 +275,8 @@ class RecommendedPlanGenerator:
                     available_types=available_types,
                     frequency=user_profile.frequency,
                     reshape_per_block=reshape_per_block,
-                    weekly_schedule=weekly_schedule
+                    weekly_schedule=weekly_schedule,
+                    goal=user_profile.goal
                 )
 
                 if is_valid:
@@ -307,6 +297,10 @@ class RecommendedPlanGenerator:
 
             except Exception as e:
                 logger.error(f"Попытка {attempt}: неожиданная ошибка: {e}")
+                if attempt < max_attempts:
+                    delay = 2 ** attempt  # 2, 4, 8 сек
+                    logger.info(f"Ожидание {delay} сек перед следующей попыткой...")
+                    time.sleep(delay)
                 continue
 
         # Если после всех попыток не получилось
@@ -314,6 +308,69 @@ class RecommendedPlanGenerator:
             f"LLM не смог сгенерировать валидный план после {max_attempts} попыток. "
             "Проверьте промпт и правила валидации."
         )
+
+    def _auto_fix_upper_position(self, plan: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Автоисправление позиции upperBody: если на неделе есть push/pull,
+        upperBody должен стоять ПОСЛЕ них (ближе к концу недели).
+        Меняет местами содержимое слотов (programSetTypes + text), не трогая day/week.
+        """
+        plan = copy.deepcopy(plan)
+
+        for week_num in range(1, 9):
+            week_indices = [
+                i for i, w in enumerate(plan) if w.get('week') == week_num
+            ]
+            if not week_indices:
+                continue
+
+            # Сортируем по дню
+            week_indices.sort(key=lambda i: plan[i].get('day', 0))
+
+            types = [
+                plan[i]['programSetTypes'][0]
+                for i in week_indices
+                if plan[i].get('programSetTypes')
+            ]
+
+            if 'upperBody' not in types:
+                continue
+            if 'push' not in types and 'pull' not in types:
+                continue
+
+            upper_pos = types.index('upperBody')
+            last_hard_pos = max(
+                (j for j, t in enumerate(types) if t in ('push', 'pull')),
+                default=-1
+            )
+
+            if upper_pos >= last_hard_pos:
+                continue  # Уже OK
+
+            # Переставляем: вынимаем upper и вставляем после последнего push/pull
+            upper_idx = week_indices[upper_pos]
+            target_idx = week_indices[last_hard_pos]
+
+            # Сохраняем содержимое upper
+            upper_content = {
+                'programSetTypes': plan[upper_idx]['programSetTypes'],
+                'text': plan[upper_idx]['text']
+            }
+
+            # Сдвигаем содержимое вниз (от upper_pos+1 до last_hard_pos)
+            for j in range(upper_pos, last_hard_pos):
+                src = week_indices[j + 1]
+                dst = week_indices[j]
+                plan[dst]['programSetTypes'] = plan[src]['programSetTypes']
+                plan[dst]['text'] = plan[src]['text']
+
+            # Ставим upper на место last_hard_pos
+            plan[target_idx]['programSetTypes'] = upper_content['programSetTypes']
+            plan[target_idx]['text'] = upper_content['text']
+
+            logger.info(f"Auto-fix: неделя {week_num} — upperBody перемещён в конец (после push/pull)")
+
+        return plan
 
     def _extract_json(self, response_text: str) -> Optional[List[Dict[str, Any]]]:
         """

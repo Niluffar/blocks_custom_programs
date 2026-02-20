@@ -3,6 +3,7 @@
 На этапе разработки используем CSV, потом переключимся на userblocks.forms
 """
 import csv
+import os
 from typing import Dict, Optional, Any
 
 
@@ -191,17 +192,13 @@ def load_questionnaire_for_user(user_id: str = None, phone_or_name: str = None) 
     Returns:
         Dict с анкетой или None
     """
-    csv_path = 'Анкета для составления программы тренировок  (Responses) - Form Responses 1.csv'
+    csv_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        'data',
+        'Анкета для составления программы тренировок  (Responses) - Form Responses 1.csv'
+    )
 
     if phone_or_name:
         return QuestionnaireLoader.load_from_csv(csv_path, phone_or_name)
 
     return None
-
-
-# Для удобства - прямой доступ к анкете Адиля
-def load_adil_questionnaire() -> Dict[str, Any]:
-    return load_questionnaire_for_user(
-        user_id='6655876bdc61e0003259b459',
-        phone_or_name='87000701471'
-    )

@@ -15,6 +15,7 @@ from db import MongoConnection, PostgresConnection
 import csv
 import json
 import logging
+import os
 import sys
 
 # Включаем подробное логирование
@@ -203,7 +204,7 @@ def generate_plan(phone_or_name: str, user_id: str):
         if not questionnaire:
             print(f"  [ERROR] ОШИБКА: Анкета не найдена для '{phone_or_name}'!")
             print("  Проверьте:")
-            print("    - CSV файл: 'Анкета для составления программы тренировок  (Responses) - Form Responses 1.csv'")
+            print("    - CSV файл: 'data/Анкета для составления программы тренировок  (Responses) - Form Responses 1.csv'")
             print(f"    - Имя или телефон '{phone_or_name}' есть в файле")
             return
 
@@ -266,7 +267,7 @@ def generate_plan(phone_or_name: str, user_id: str):
 
         # Формируем имя файла из user_id
         safe_name = questionnaire.get('name', user_id).lower().replace(' ', '_')
-        output_file = f'plan_{safe_name}_{user_id[:8]}.json'
+        output_file = os.path.join('output', f'plan_{safe_name}_{user_id[:8]}.json')
 
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
@@ -319,13 +320,13 @@ def print_usage():
     print("\n  # По части имени")
     print("  python generate_plan.py Адиль 6655876bdc61e0003259b459")
     print("\nТребования:")
-    print("  1. CSV файл: 'Анкета для составления программы тренировок  (Responses) - Form Responses 1.csv'")
+    print("  1. CSV файл: 'data/Анкета для составления программы тренировок  (Responses) - Form Responses 1.csv'")
     print("  2. .env файл с переменными:")
     print("     - GEMINI_API_KEY")
     print("     - POSTGRES_CONNECTION_STRING")
     print("     - MONGODB_CONNECTION_STRING")
     print("\nРезультат:")
-    print("  Создаётся файл plan_<имя>_<user_id>.json с полным планом тренировок")
+    print("  Создаётся файл output/plan_<имя>_<user_id>.json с полным планом тренировок")
     print("=" * 80 + "\n")
 
 

@@ -30,7 +30,8 @@ class PlanValidator:
         available_types: List[str],
         frequency: int,
         reshape_per_block: int = 0,
-        weekly_schedule: List[int] = None
+        weekly_schedule: List[int] = None,
+        goal: str = None
     ) -> Tuple[bool, List[str]]:
         """
         Валидация плана на соответствие всем правилам.
@@ -42,6 +43,7 @@ class PlanValidator:
             frequency: Базовая частота тренировок в неделю (используется если weekly_schedule не задан)
             reshape_per_block: Лимит тренировок Reshape на этот блок (0 = недоступен)
             weekly_schedule: Понедельный график частот [W1..W8] (волнообразная периодизация)
+            goal: Цель тренировок (похудение, масса, и т.д.) - влияет на лимиты кардио
 
         Returns:
             Tuple[bool, List[str]]: (is_valid, errors)
@@ -84,7 +86,7 @@ class PlanValidator:
         errors.extend(reshape_errors)
 
         # 8. Проверка разнообразия типов программ
-        diversity_errors = self._validate_diversity(plan)
+        diversity_errors = self._validate_diversity(plan, goal=goal)
         errors.extend(diversity_errors)
 
         # 9. Проверка стыков недель (одинаковый тип конец→начало)
@@ -94,6 +96,14 @@ class PlanValidator:
         # 10. Проверка баланса push/pull
         balance_errors = self._validate_push_pull_balance(plan)
         errors.extend(balance_errors)
+
+        # 11. Проверка: upperBody должен идти ПОСЛЕ push/pull на неделе
+        upper_errors = self._validate_upper_position(plan)
+        errors.extend(upper_errors)
+
+        # 12. Проверка прогрессии: Part 1 легче Part 2
+        progression_errors = self._validate_progression(plan)
+        errors.extend(progression_errors)
 
         is_valid = len(errors) == 0
         return is_valid, errors
@@ -125,7 +135,7 @@ class PlanValidator:
 
         if weekly_schedule:
             expected_total = sum(weekly_schedule)
-            max_workouts = 5 * 8
+            max_workouts = 6 * 8
             if total_workouts != expected_total:
                 errors.append(
                     f"Неверное общее количество тренировок: {total_workouts} "
@@ -133,7 +143,7 @@ class PlanValidator:
                 )
         else:
             min_workouts = frequency * 8
-            max_workouts = 5 * 8
+            max_workouts = 6 * 8
             if total_workouts < min_workouts or total_workouts > max_workouts:
                 errors.append(
                     f"Неверное общее количество тренировок: {total_workouts} "
@@ -315,7 +325,7 @@ class PlanValidator:
         """
         Проверка лимита тренировок Reshape на блок.
         reshape_per_block рассчитан из pilatesVisits / кол-во блоков в абонементе.
-        0 = reshape недоступен.
+        0 = нет pilatesVisits, но Reshape всё равно можно добавлять (атлет заплатит отдельно).
         """
         errors = []
 
@@ -325,12 +335,9 @@ class PlanValidator:
             if w.get('programSetTypes') and w['programSetTypes'][0] == 'reshape'
         )
 
-        if reshape_per_block <= 0 and reshape_count > 0:
-            errors.append(
-                f"В плане {reshape_count} тренировок Reshape, "
-                f"но у атлета нет доступа к Reshape (нет pilatesVisits в абонементе)"
-            )
-        elif reshape_per_block > 0 and reshape_count > reshape_per_block:
+        # Проверяем только превышение лимита, если pilatesVisits есть
+        # Если pilatesVisits нет (reshape_per_block=0), Reshape всё равно можно добавлять
+        if reshape_per_block > 0 and reshape_count > reshape_per_block:
             errors.append(
                 f"Превышен лимит Reshape на блок: в плане {reshape_count}, "
                 f"допустимо {reshape_per_block} (рассчитано из pilatesVisits абонемента)"
@@ -338,7 +345,7 @@ class PlanValidator:
 
         return errors
 
-    def _validate_diversity(self, plan: List[Dict]) -> List[str]:
+    def _validate_diversity(self, plan: List[Dict], goal: str = None) -> List[str]:
         """Проверка разнообразия типов программ."""
         errors = []
 
@@ -365,14 +372,18 @@ class PlanValidator:
                     f"максимум допустимо 25%. Замени часть на другие типы."
                 )
 
-        # Кардио-типы (bootcamp + metcon) суммарно не более 45%
+        # Кардио-типы (bootcamp + metcon) суммарно: для похудения 55%, для остальных 45%
         cardio_types = ['bootcamp', 'metcon']
         cardio_count = sum(distribution.get(t, 0) for t in cardio_types)
         cardio_pct = (cardio_count / total) * 100
-        if cardio_pct > 45:
+
+        # Лимит зависит от цели
+        max_cardio_pct = 55 if goal == 'похудение' else 45
+
+        if cardio_pct > max_cardio_pct:
             errors.append(
                 f"Слишком много кардио: bootcamp+metcon = {cardio_count}/{total} ({cardio_pct:.0f}%). "
-                f"Максимум 45%. Добавь силовые (push, pull, legs, upperBody, fullBody)."
+                f"Максимум {max_cardio_pct}%. Добавь силовые (push, pull, legs, upperBody, fullBody)."
             )
 
         # Силовые типы суммарно не менее 20%
@@ -389,11 +400,10 @@ class PlanValidator:
         return errors
 
     def _validate_week_seams(self, plan: List[Dict]) -> List[str]:
-        """Проверка: одинаковый тип на конце недели и начале следующей."""
+        """Проверка: одинаковый ИЛИ конфликтующий тип на конце недели и начале следующей."""
         errors = []
 
         for week in range(1, 8):  # 1-7 (проверяем стык с следующей)
-            # Последняя тренировка текущей недели
             week_workouts = [w for w in plan if w.get('week') == week]
             next_week_workouts = [w for w in plan if w.get('week') == week + 1]
 
@@ -409,11 +419,21 @@ class PlanValidator:
             last_type = last.get('programSetTypes', [''])[0] if last.get('programSetTypes') else ''
             first_type = first.get('programSetTypes', [''])[0] if first.get('programSetTypes') else ''
 
-            if last_type and first_type and last_type == first_type:
+            if not last_type or not first_type:
+                continue
+
+            # Одинаковый тип
+            if last_type == first_type:
                 errors.append(
                     f"Одинаковый тип на стыке недель {week}→{week+1}: "
-                    f"'{last_type}' (день {last.get('day')}) → '{first_type}' (день {first.get('day')}). "
-                    f"Замени один из них на другой тип."
+                    f"'{last_type}' → '{first_type}'. Замени один из них."
+                )
+            # Конфликтующие типы (те же мышцы)
+            elif not can_perform(first_type, [last_type]):
+                errors.append(
+                    f"Конфликт на стыке недель {week}→{week+1}: "
+                    f"'{last_type}' → '{first_type}' (те же мышечные группы). "
+                    f"Замени один из них на неконфликтующий тип."
                 )
 
         return errors
@@ -445,7 +465,8 @@ class PlanValidator:
         recovery_rules: Dict[str, Dict],
         available_types: List[str],
         frequency: int,
-        weekly_schedule: List[int] = None
+        weekly_schedule: List[int] = None,
+        goal: str = None
     ) -> Dict[str, Any]:
         """
         Получить детальную сводку валидации.
@@ -459,7 +480,8 @@ class PlanValidator:
         """
         is_valid, errors = self.validate_plan(
             plan, recovery_rules, available_types, frequency,
-            weekly_schedule=weekly_schedule
+            weekly_schedule=weekly_schedule,
+            goal=goal
         )
 
         # Статистика
@@ -504,3 +526,66 @@ class PlanValidator:
                 distribution[main_type] = distribution.get(main_type, 0) + 1
 
         return distribution
+
+    def _validate_upper_position(self, plan: List[Dict]) -> List[str]:
+        """Проверка: upperBody должен идти ПОСЛЕ push/pull на той же неделе."""
+        errors = []
+
+        for week in range(1, 9):
+            week_workouts = sorted(
+                [w for w in plan if w.get('week') == week],
+                key=lambda x: x.get('day', 0)
+            )
+            types = [
+                w['programSetTypes'][0]
+                for w in week_workouts
+                if w.get('programSetTypes')
+            ]
+
+            if 'upperBody' not in types:
+                continue
+            if 'push' not in types and 'pull' not in types:
+                continue
+
+            upper_idx = types.index('upperBody')
+            # upperBody должен быть после всех push/pull
+            last_hard_idx = max(
+                (i for i, t in enumerate(types) if t in ('push', 'pull')),
+                default=-1
+            )
+            if upper_idx < last_hard_idx:
+                errors.append(
+                    f"Неделя {week}: upperBody (позиция {upper_idx+1}) стоит ПЕРЕД "
+                    f"push/pull (позиция {last_hard_idx+1}). "
+                    f"upperBody должен быть ПОСЛЕДНИМ силовым верха на неделе."
+                )
+
+        return errors
+
+    def _validate_progression(self, plan: List[Dict]) -> List[str]:
+        """Проверка: Part 1 должен быть легче Part 2 (больше push/pull в Part 2)."""
+        errors = []
+
+        hard_types = {'push', 'pull'}
+        easy_types = {'upperBody', 'fullBody', 'functionalFullBody'}
+
+        part1 = [w['programSetTypes'][0] for w in plan
+                 if w.get('part') == 1 and w.get('programSetTypes')]
+        part2 = [w['programSetTypes'][0] for w in plan
+                 if w.get('part') == 2 and w.get('programSetTypes')]
+
+        if not part1 or not part2:
+            return errors
+
+        p1_hard = sum(1 for t in part1 if t in hard_types)
+        p2_hard = sum(1 for t in part2 if t in hard_types)
+
+        # Part 1 не должен иметь больше тяжёлых (push/pull) чем Part 2
+        if p1_hard > p2_hard + 1:
+            errors.append(
+                f"Part 1 тяжелее Part 2: push/pull в Part1={p1_hard}, Part2={p2_hard}. "
+                f"Part 1 должен быть легче — используй больше upperBody/fullBody в Part 1 "
+                f"и больше push/pull в Part 2."
+            )
+
+        return errors

@@ -2,8 +2,11 @@
 Фильтрация типов программ по доступным зонам клуба
 Использует данные HeroPass пользователя и маппинг зон из club_zones.py
 """
+import logging
 import math
 from typing import Dict, List, Optional
+from db import MongoConnection
+from bson import ObjectId
 from rules.club_zones import (
     PROGRAM_TYPE_TO_ZONES,
     CLUB_STRUCTURE,
@@ -61,10 +64,6 @@ class ClubFilter:
                 return data
 
         # Запрос к MongoDB для получения клуба пользователя
-        import logging
-        from db import MongoConnection
-        from bson import ObjectId
-
         heropass = None
         try:
             # Получаем активный HeroPass (полный документ — нужен pilatesVisits)
@@ -188,15 +187,12 @@ class ClubFilter:
         available_program_types = []
         if club_id:
             try:
-                from db import MongoConnection
                 available_program_types = MongoConnection.get_available_program_types_for_club(club_id)
             except Exception as e:
-                import logging
                 logging.warning(f"Не удалось загрузить programsets для клуба {club_name}: {e}")
 
         # Если не удалось получить из MongoDB, используем zone-based filtering как fallback
         if not available_program_types:
-            import logging
             logging.info(f"Используется zone-based filtering для клуба {club_name}")
             zones = club_info.get('zones', [])
             all_program_types = list(RECOVERY_RULES.keys())

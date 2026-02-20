@@ -4,5 +4,10 @@ __pycache__/
 *.pyo
 .venv/
 venv/
-output/*.json
-output/*.xlsx
+
+# Generated plans
+output/
+
+# Debug artifacts
+*_debug.json
+nul

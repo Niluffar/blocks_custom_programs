@@ -1,66 +1,34 @@
 """
-Загрузка примеров паттернов из контекстных файлов
-Парсит "Контекст Путъ Атлета.md" и извлекает структуру программ
-для передачи в LLM как референс
+Паттерны тренировок для различных целей и уровней.
+Используются как примеры в промпте для LLM.
 """
-import re
 from typing import List, Dict, Any, Optional
-from pathlib import Path
 
 
 class PatternLoader:
     """
-    Загрузчик паттернов тренировок из контекстных файлов.
-
-    Извлекает:
-    - Burn 1-5
-    - Fit Body 1-5
-    - Legs 1-5
-    - Build/Strong 1-5
-    - Athlete 1-5
+    Паттерны тренировок для путей:
+    - Burn 1-5 (похудение)
+    - Fit Body 1-5 (рельеф)
+    - Legs 1-5 (ноги)
+    - Build/Strong 1-5 (масса)
+    - Athlete 1-5 (здоровье)
     """
 
-    def __init__(self, context_file_path: str):
-        """
-        Args:
-            context_file_path: Путь к файлу "Контекст Путъ Атлета.md"
-        """
-        self.context_file_path = Path(context_file_path)
+    def __init__(self, context_file_path: str = None):
         self.patterns = []
 
     def load_all_patterns(self) -> List[Dict[str, Any]]:
-        """
-        Загрузить все паттерны из файла.
-
-        Returns:
-            Список паттернов с метаданными
-        """
-        if not self.context_file_path.exists():
-            raise FileNotFoundError(f"Файл не найден: {self.context_file_path}")
-
-        content = self.context_file_path.read_text(encoding='utf-8')
-
-        # Извлечь паттерны для каждого пути
+        """Загрузить все паттерны."""
         self.patterns = []
-
-        # Burn 1-5
-        self.patterns.extend(self._extract_burn_patterns(content))
-
-        # Fit Body 1-5
-        self.patterns.extend(self._extract_fit_body_patterns(content))
-
-        # Legs 1-5
-        self.patterns.extend(self._extract_legs_patterns(content))
-
-        # Build/Strong 1-5
-        self.patterns.extend(self._extract_build_patterns(content))
-
-        # Athlete 1-5
-        self.patterns.extend(self._extract_athlete_patterns(content))
-
+        self.patterns.extend(self._extract_burn_patterns())
+        self.patterns.extend(self._extract_fit_body_patterns())
+        self.patterns.extend(self._extract_legs_patterns())
+        self.patterns.extend(self._extract_build_patterns())
+        self.patterns.extend(self._extract_athlete_patterns())
         return self.patterns
 
-    def _extract_burn_patterns(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_burn_patterns(self) -> List[Dict[str, Any]]:
         """Извлечь паттерны Burn 1-5."""
         patterns = []
 
@@ -126,7 +94,7 @@ class PatternLoader:
 
         return patterns
 
-    def _extract_fit_body_patterns(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_fit_body_patterns(self) -> List[Dict[str, Any]]:
         """Извлечь паттерны Fit Body 1-5."""
         patterns = []
 
@@ -192,7 +160,7 @@ class PatternLoader:
 
         return patterns
 
-    def _extract_legs_patterns(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_legs_patterns(self) -> List[Dict[str, Any]]:
         """Извлечь паттерны Legs 1-5."""
         patterns = []
 
@@ -256,7 +224,7 @@ class PatternLoader:
 
         return patterns
 
-    def _extract_build_patterns(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_build_patterns(self) -> List[Dict[str, Any]]:
         """Извлечь паттерны Build/Strong 1-5."""
         patterns = []
 
@@ -320,7 +288,7 @@ class PatternLoader:
 
         return patterns
 
-    def _extract_athlete_patterns(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_athlete_patterns(self) -> List[Dict[str, Any]]:
         """Извлечь паттерны Athlete 1-5."""
         patterns = []
 

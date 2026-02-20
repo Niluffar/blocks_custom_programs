@@ -56,10 +56,6 @@ class MongoConnection:
     def user_marathons(cls):
         return cls.get_db()["usermarathons"]
 
-    @classmethod
-    def programsets(cls):
-        return cls.get_db()["programsets"]
-
     # --- Запросы для блоков ---
 
     @classmethod
@@ -296,13 +292,3 @@ class MongoConnection:
         program_types = cls.programsets().distinct('type', {'club': club_id})
 
         return list(program_types)
-
-    @classmethod
-    def get_all_program_types(cls):
-        """
-        Получить список всех возможных типов программ в системе.
-
-        Returns:
-            List[str]: Список всех уникальных типов программ
-        """
-        return list(cls.programsets().distinct('type'))

@@ -18,7 +18,7 @@ class UserProfile:
     goal: str  # похудение/масса/рельеф/здоровье/поддержание
     focus_areas: List[str]  # верх_тела, ноги, выносливость, баланс
     experience_level: str  # новичок/любитель/профи
-    current_break: int  # месяцы с последней тренировки
+    current_break: int  # дни с последней тренировки
     health_restrictions: str = ''  # Raw text ограничений здоровья
 
     # Данные из InBody
